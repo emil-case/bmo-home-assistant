@@ -1,0 +1,19 @@
+# Wake word
+openwakeword
+
+# Audio I/O
+pyaudio
+sounddevice
+numpy
+
+# STT + LLM (via Groq)
+groq
+
+# TTS
+piper-tts
+
+# Web search
+requests
+
+# Env config
+python-dotenv
