@@ -89,7 +89,7 @@ bmo/
 
 ## Wake word notes
 
-- Default model: `"hey_jarvis"` (downloaded automatically on first run, ~50MB)
+- Default model: custom `hey_bmo_v2.0.onnx`, shipped in `resources/` at the repo root
 - openwakeword chunk size must be **1280 samples at 16kHz** (80ms) — do not change `CHUNK` in `capture.py`
 - Silence threshold (RMS `500` in `capture.py`) may need tuning per microphone
-- A custom "Hey BMO" wake word can be trained with ~5 minutes of audio via openwakeword's training tools
+- To swap models, pass a `model_path` to `WakeWordDetector(...)` in `main.py`

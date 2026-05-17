@@ -23,6 +23,7 @@ build/
 # Piper models
 *.onnx
 *.onnx.json
+!resources/hey_bmo_v2.0.onnx
 
 # OS
 .DS_Store
