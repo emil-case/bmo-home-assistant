@@ -4,7 +4,7 @@ import numpy as np
 CHUNK = 1280  # 80ms at 16kHz — required by openwakeword
 RATE = 16000
 FORMAT = pyaudio.paInt16
-SILENCE_THRESHOLD = 500   # RMS energy below this = silence
+SILENCE_THRESHOLD = 2000  # RMS energy below this = silence
 SILENCE_DURATION = 1.5    # seconds of silence to stop recording
 
 
@@ -36,6 +36,8 @@ class AudioCapture:
             rms = float(np.sqrt(np.mean(
                 np.frombuffer(raw, dtype=np.int16).astype(np.float32) ** 2
             )))
+
+            print(f"rms={rms:7.1f}  silent_chunks={silent_chunks}")
 
             if rms < SILENCE_THRESHOLD:
                 silent_chunks += 1
