@@ -99,3 +99,6 @@ bmo/
 - openwakeword chunk size must be **1280 samples at 16kHz** (80ms) — do not change `CHUNK` in `capture.py`
 - Silence threshold (RMS `500` in `capture.py`) may need tuning per microphone
 - To swap models, pass a `model_path` to `WakeWordDetector(...)` in `main.py`
+- Call `detector.reset()` after handling a command — otherwise leftover audio (the
+  wake word + the spoken command) lingers in the model's buffer and re-triggers
+  detection on the next loop

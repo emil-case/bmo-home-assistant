@@ -34,6 +34,7 @@ def main():
                 print(f"BMO: {reply}")
                 # TODO: tool-use loop and TTS playback go here.
                 capture.resume()
+                detector.reset()  # clear leftover audio so it doesn't re-trigger
                 print("Listening for wake word...")
     except KeyboardInterrupt:
         print("\nShutting down.")

@@ -18,3 +18,11 @@ class WakeWordDetector:
 
     def process(self, audio: np.ndarray) -> bool:
         return self.score(audio) >= self._threshold
+
+    def reset(self) -> None:
+        """Clear the model's rolling audio/feature buffers.
+
+        Call after handling a command so leftover audio (the wake word and the
+        spoken command) doesn't immediately re-trigger detection.
+        """
+        self._model.reset()
