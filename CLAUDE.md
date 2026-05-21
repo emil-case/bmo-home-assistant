@@ -97,8 +97,12 @@ bmo/
 tests/               # pytest suite (mocks hardware + APIs, see Testing)
 ```
 
-`README.md` is the public-facing overview (project pitch, status, services, setup). Keep
-its status checklist in sync with the **Current state** section below when features land.
+`README.md` is the public-facing overview (project pitch, status, services, setup).
+
+**Always update `README.md` before pushing to the remote.** Whenever you push, first
+review what changed in the commits being pushed and bring the README in sync — its
+status checklist, services, structure, and setup — alongside the **Current state**
+section below. Include the README update in the push.
 
 ## Current state
 
