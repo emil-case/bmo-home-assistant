@@ -64,6 +64,8 @@ bmo/
     cue.py           # play_acknowledgement() — beep when wake word fires (placeholder for BMO voice)
   stt/
     transcribe.py    # Transcriber: PCM -> in-memory WAV -> Groq Whisper -> text
+  llm/
+    chat.py          # ChatSession: session history + Groq Llama request (tool loop TBD)
   tools/             # pluggable LLM tools (e.g. web search)
 ```
 
@@ -73,7 +75,7 @@ bmo/
 - [x] Main loop scaffold (`main.py`) — detects wake word, plays a beep, records until silence
 - [x] STT — captured audio sent to Groq Whisper, returns transcript (`bmo/stt/`)
 - [x] Half-duplex mic — `pause()`/`resume()` stop capture while BMO handles a command (mic currently paused via a 60s `time.sleep` placeholder)
-- [ ] LLM tool-use loop — send transcript to Groq Llama, handle tool calls recursively
+- [~] LLM tool-use loop — basic Groq Llama request + session history done (`bmo/llm/chat.py`); recursive tool calls TBD
 - [ ] Brave search tool
 - [ ] TTS — send final text to Piper, play audio
 - [ ] Session conversation history

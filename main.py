@@ -1,11 +1,10 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-import time
-
 from bmo.audio.capture import AudioCapture, RATE
 from bmo.audio.cue import play_acknowledgement
 from bmo.audio.wake_word import WakeWordDetector
+from bmo.llm.chat import ChatSession
 from bmo.stt.transcribe import Transcriber
 
 
@@ -13,6 +12,7 @@ def main():
     capture = AudioCapture()
     detector = WakeWordDetector()
     transcriber = Transcriber()
+    chat = ChatSession()
 
     print("BMO is ready. Listening for wake word...")
     try:
@@ -27,15 +27,14 @@ def main():
                 transcript = transcriber.transcribe(audio)
                 print(f"You said: {transcript}")
 
-                # Placeholder for handling the command (LLM -> TTS -> playback).
                 # Pause the mic so nothing is captured (incl. BMO's own voice once
-                # TTS lands) while busy, then resume. Replace the sleep with the
-                # real pipeline.
+                # TTS lands) while handling the command, then resume.
                 capture.pause()
-                print("Handling command... (listening paused for 60s)")
-                time.sleep(60)
+                reply = chat.send(transcript)
+                print(f"BMO: {reply}")
+                # TODO: tool-use loop and TTS playback go here.
                 capture.resume()
-                print("Done. Listening for wake word...")
+                print("Listening for wake word...")
     except KeyboardInterrupt:
         print("\nShutting down.")
     finally:
