@@ -4,6 +4,7 @@ load_dotenv()
 import time
 
 from bmo.audio.capture import AudioCapture, RATE
+from bmo.audio.cue import play_acknowledgement
 from bmo.audio.wake_word import WakeWordDetector
 from bmo.stt.transcribe import Transcriber
 
@@ -19,6 +20,7 @@ def main():
             chunk = capture.read_chunk()
             if detector.process(chunk):
                 print("Wake word detected! Recording...")
+                play_acknowledgement()
                 audio = capture.record_until_silence()
                 duration = len(audio) / (2 * RATE)
                 print(f"Captured {duration:.1f}s of audio — transcribing...")

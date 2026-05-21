@@ -59,16 +59,20 @@ Piper TTS requires downloading a voice model (`.onnx` + `.onnx.json`) and placin
 main.py              # entry point, main loop
 bmo/
   audio/
-    capture.py       # owns PyAudio stream; read_chunk() + record_until_silence()
+    capture.py       # owns PyAudio stream; read_chunk(), record_until_silence(), pause()/resume()
     wake_word.py     # wraps openwakeword Model; process(chunk) -> bool
+    cue.py           # play_acknowledgement() — beep when wake word fires (placeholder for BMO voice)
+  stt/
+    transcribe.py    # Transcriber: PCM -> in-memory WAV -> Groq Whisper -> text
   tools/             # pluggable LLM tools (e.g. web search)
 ```
 
 ## Current state
 
 - [x] Wake word detection + audio capture pipeline (`bmo/audio/`)
-- [x] Main loop scaffold (`main.py`) — detects wake word, records until silence, prints duration
-- [ ] STT — send captured audio to Groq Whisper, get transcript
+- [x] Main loop scaffold (`main.py`) — detects wake word, plays a beep, records until silence
+- [x] STT — captured audio sent to Groq Whisper, returns transcript (`bmo/stt/`)
+- [x] Half-duplex mic — `pause()`/`resume()` stop capture while BMO handles a command (mic currently paused via a 60s `time.sleep` placeholder)
 - [ ] LLM tool-use loop — send transcript to Groq Llama, handle tool calls recursively
 - [ ] Brave search tool
 - [ ] TTS — send final text to Piper, play audio
