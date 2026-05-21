@@ -1,2 +1,15 @@
-# Test dependencies (not needed on the Pi at runtime)
+# Dependencies to run the test suite (dev/CI only — not needed on the Pi).
+# Kept minimal: only what the modules under test import. The hardware/API
+# objects (PyAudio stream, openwakeword Model, Groq client) are mocked, but
+# their imports still resolve at module load, so the packages must be present.
+#
+# Deliberately excluded (not imported by any test): sounddevice, piper-tts,
+# requests, python-dotenv.
+
 pytest
+
+numpy           # capture.py, wake_word.py
+pyaudio         # capture.py (needs PortAudio system lib)
+groq            # transcribe.py, chat.py
+openwakeword    # wake_word.py
+onnxruntime     # imported at top of openwakeword/model.py

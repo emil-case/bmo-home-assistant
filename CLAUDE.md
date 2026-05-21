@@ -56,9 +56,14 @@ Piper TTS requires downloading a voice model (`.onnx` + `.onnx.json`) and placin
 ## Testing
 
 ```bash
-pip install -r requirements-dev.txt   # pytest (dev only, not needed on the Pi)
+pip install -r requirements-dev.txt   # minimal test-only deps (dev/CI, not the Pi)
 pytest
 ```
+
+`requirements-dev.txt` is the minimal set the tests import (pytest + numpy, pyaudio,
+groq, openwakeword, onnxruntime) — deliberately *not* the full runtime
+`requirements.txt`. The mocked objects' imports still resolve at module load, so those
+packages must be installed; sounddevice/piper-tts/requests/python-dotenv are not.
 
 Tests live in `tests/` and run with no hardware or network — the boundaries are
 mocked, so nothing hits a real mic, speaker, or the Groq API:
@@ -70,6 +75,10 @@ mocked, so nothing hits a real mic, speaker, or the Groq API:
 
 `main.py`'s loop is glue and isn't unit-tested — verify it manually. Test names follow
 the `given_when_then` convention.
+
+CI runs the suite on every push and PR to `main` via `.github/workflows/tests.yml`
+(installs PortAudio for pyaudio, then `requirements-dev.txt`, then `pytest`). No
+secrets needed — tests never reach Groq.
 
 ## Package structure
 
