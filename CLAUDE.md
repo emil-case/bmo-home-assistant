@@ -97,6 +97,9 @@ bmo/
 tests/               # pytest suite (mocks hardware + APIs, see Testing)
 ```
 
+`README.md` is the public-facing overview (project pitch, status, services, setup). Keep
+its status checklist in sync with the **Current state** section below when features land.
+
 ## Current state
 
 - [x] Wake word detection + audio capture pipeline (`bmo/audio/`)
