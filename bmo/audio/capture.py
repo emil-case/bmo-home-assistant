@@ -37,7 +37,7 @@ class AudioCapture:
                 np.frombuffer(raw, dtype=np.int16).astype(np.float32) ** 2
             )))
 
-            print(f"rms={rms:7.1f}  silent_chunks={silent_chunks}")
+            #print(f"rms={rms:7.1f}  silent_chunks={silent_chunks}") debug command
 
             if rms < SILENCE_THRESHOLD:
                 silent_chunks += 1
@@ -48,6 +48,20 @@ class AudioCapture:
                 break
 
         return b"".join(frames)
+
+    def pause(self):
+        """Stop capturing so no audio buffers while BMO handles a command."""
+        if self._stream.is_active():
+            self._stream.stop_stream()
+
+    def resume(self):
+        """Resume capturing, discarding any frames buffered around the restart."""
+        if not self._stream.is_active():
+            self._stream.start_stream()
+        # Drop straggler frames so the wake-word detector doesn't act on stale audio.
+        available = self._stream.get_read_available()
+        if available > 0:
+            self._stream.read(available, exception_on_overflow=False)
 
     def close(self):
         self._stream.stop_stream()
