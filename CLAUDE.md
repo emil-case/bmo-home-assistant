@@ -53,6 +53,24 @@ Required env vars (`.env`):
 
 Piper TTS requires downloading a voice model (`.onnx` + `.onnx.json`) and placing it under `bmo/audio/voices/`. These files are gitignored.
 
+## Testing
+
+```bash
+pip install -r requirements-dev.txt   # pytest (dev only, not needed on the Pi)
+pytest
+```
+
+Tests live in `tests/` and run with no hardware or network — the boundaries are
+mocked, so nothing hits a real mic, speaker, or the Groq API:
+- **Pure logic** (`_pcm_to_wav`) is tested directly.
+- **API clients** (`Transcriber`, `ChatSession`) take an optional `client=` arg so
+  tests inject a fake Groq client instead of patching imports.
+- **Hardware wrappers** (`AudioCapture`, `WakeWordDetector`) are tested by patching
+  `pyaudio` / the openwakeword `Model`.
+
+`main.py`'s loop is glue and isn't unit-tested — verify it manually. Test names follow
+the `given_when_then` convention.
+
 ## Package structure
 
 ```
@@ -67,6 +85,7 @@ bmo/
   llm/
     chat.py          # ChatSession: session history + Groq Llama request (tool loop TBD)
   tools/             # pluggable LLM tools (e.g. web search)
+tests/               # pytest suite (mocks hardware + APIs, see Testing)
 ```
 
 ## Current state

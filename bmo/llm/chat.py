@@ -18,8 +18,8 @@ class ChatSession:
     each turn so replies stay coherent. Tool calling will be layered on next.
     """
 
-    def __init__(self, model: str = DEFAULT_MODEL):
-        self._client = Groq()
+    def __init__(self, model: str = DEFAULT_MODEL, client=None):
+        self._client = client or Groq()
         self._model = model
         self._messages = [{"role": "system", "content": SYSTEM_PROMPT}]
 

@@ -1,0 +1,2 @@
+# Test dependencies (not needed on the Pi at runtime)
+pytest
