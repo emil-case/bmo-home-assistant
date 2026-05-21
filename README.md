@@ -51,17 +51,18 @@ This is a work in progress. Here's how far it's come:
 - [x] **Acknowledgement beep** when the wake word fires (placeholder for a BMO voice clip)
 - [x] **Half-duplex mic** — capture pauses while BMO handles a command, then resumes
   (so it won't hear itself once TTS lands)
-- [x] **STT** — captured audio → Groq Whisper → transcript (`bmo/stt/`)
+- [x] **STT** — captured audio → Groq Whisper → transcript (`bmo/stt/`), locked to
+  English so accents aren't misdetected as another language
 - [x] **LLM request** + session history (`bmo/llm/`) — *basic request done; recursive
   tool-use loop still pending*
+- [x] **TTS** — final text → Piper → audio playback (`bmo/tts/`)
 - [x] **Test suite + CI** — pytest with mocked hardware/APIs, runs on GitHub Actions
 - [ ] **LLM tool-use loop** — handle tool calls recursively
 - [ ] **Brave web search tool**
-- [ ] **TTS** — final text → Piper → audio playback
 
 The current `main.py` loop: detect wake word → beep → record until silence → transcribe
-→ send to the LLM → print the reply. A `TODO` marks where the tool-use loop and TTS will
-slot in.
+→ send to the LLM → speak the reply with Piper. A `TODO` marks where the recursive
+tool-use loop will slot in (before speaking).
 
 ## Setup
 
@@ -83,7 +84,7 @@ Required env vars in `.env`:
 - `BRAVE_API_KEY` — used for the web search tool
 
 Piper TTS needs a voice model (`.onnx` + `.onnx.json`) placed under
-`bmo/audio/voices/` (gitignored).
+`resources/voices/` (gitignored). BMO loads the first `.onnx` it finds there.
 
 Then run:
 
@@ -104,6 +105,8 @@ bmo/
     transcribe.py    # PCM -> in-memory WAV -> Groq Whisper -> text
   llm/
     chat.py          # session history + Groq Llama request (tool loop TBD)
+  tts/
+    speak.py         # Piper synthesis -> sounddevice playback
   tools/             # pluggable LLM tools (e.g. web search)
 tests/               # pytest suite (mocks hardware + APIs)
 ```

@@ -51,7 +51,7 @@ Required env vars (`.env`):
 - `GROQ_API_KEY` — used for both STT (Whisper) and LLM inference
 - `BRAVE_API_KEY` — used for web search tool
 
-Piper TTS requires downloading a voice model (`.onnx` + `.onnx.json`) and placing it under `bmo/audio/voices/`. These files are gitignored.
+Piper TTS requires downloading a voice model (`.onnx` + `.onnx.json`) and placing it under `resources/voices/` (alongside the wake-word model in `resources/`). `Speaker` auto-loads the first `.onnx` it finds there. These files are gitignored.
 
 ## Testing
 
@@ -61,9 +61,9 @@ pytest
 ```
 
 `requirements-dev.txt` is the minimal set the tests import (pytest + numpy, pyaudio,
-groq, openwakeword, onnxruntime) — deliberately *not* the full runtime
-`requirements.txt`. The mocked objects' imports still resolve at module load, so those
-packages must be installed; sounddevice/piper-tts/requests/python-dotenv are not.
+groq, openwakeword, onnxruntime, sounddevice, piper-tts) — deliberately *not* the full
+runtime `requirements.txt`. The mocked objects' imports still resolve at module load, so
+those packages must be installed; requests/python-dotenv are not.
 
 Tests live in `tests/` and run with no hardware or network — the boundaries are
 mocked, so nothing hits a real mic, speaker, or the Groq API:
@@ -93,6 +93,8 @@ bmo/
     transcribe.py    # Transcriber: PCM -> in-memory WAV -> Groq Whisper -> text
   llm/
     chat.py          # ChatSession: session history + Groq Llama request (tool loop TBD)
+  tts/
+    speak.py         # Speaker: Piper synthesis -> sounddevice playback (voice from resources/voices/)
   tools/             # pluggable LLM tools (e.g. web search)
 tests/               # pytest suite (mocks hardware + APIs, see Testing)
 ```
@@ -109,11 +111,11 @@ section below. Include the README update in the push.
 - [x] Wake word detection + audio capture pipeline (`bmo/audio/`)
 - [x] Main loop scaffold (`main.py`) — detects wake word, plays a beep, records until silence
 - [x] STT — captured audio sent to Groq Whisper, returns transcript (`bmo/stt/`)
-- [x] Half-duplex mic — `pause()`/`resume()` stop capture while BMO handles a command (mic currently paused via a 60s `time.sleep` placeholder)
+- [x] Half-duplex mic — `pause()`/`resume()` stop capture while BMO handles a command
+- [x] TTS — final text synthesized by Piper and played back (`bmo/tts/speak.py`)
+- [x] Session conversation history — `ChatSession` keeps `messages[]` for the session
 - [~] LLM tool-use loop — basic Groq Llama request + session history done (`bmo/llm/chat.py`); recursive tool calls TBD
 - [ ] Brave search tool
-- [ ] TTS — send final text to Piper, play audio
-- [ ] Session conversation history
 
 ## Key dependencies
 

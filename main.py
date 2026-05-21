@@ -6,6 +6,7 @@ from bmo.audio.cue import play_acknowledgement
 from bmo.audio.wake_word import WakeWordDetector
 from bmo.llm.chat import ChatSession
 from bmo.stt.transcribe import Transcriber
+from bmo.tts.speak import Speaker
 
 
 def main():
@@ -13,6 +14,7 @@ def main():
     detector = WakeWordDetector()
     transcriber = Transcriber()
     chat = ChatSession()
+    speaker = Speaker()
 
     print("BMO is ready. Listening for wake word...")
     try:
@@ -32,7 +34,8 @@ def main():
                 capture.pause()
                 reply = chat.send(transcript)
                 print(f"BMO: {reply}")
-                # TODO: tool-use loop and TTS playback go here.
+                speaker.say(reply)  # mic is paused, so BMO won't hear itself
+                # TODO: recursive tool-use loop goes here (before speaking).
                 capture.resume()
                 detector.reset()  # clear leftover audio so it doesn't re-trigger
                 print("Listening for wake word...")
