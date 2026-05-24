@@ -35,11 +35,11 @@ and wiped on restart.
 |-------------|---------------------|-----|
 | Wake word   | OpenWakeWord        | Free, fully local, runs on a Pi Zero 2W |
 | STT         | Groq Whisper API    | ~300ms transcription, generous free tier |
-| LLM         | Groq + Llama 3.3 70B | Free tier, tool calling, 1–2s responses |
+| LLM         | Groq + Llama 4 Scout 17B | Free tier, fast, reliable structured tool calls |
 | TTS         | Piper TTS           | Designed for edge devices, very low RAM |
-| Web search  | Brave Search API    | Free tier, 2000 queries/month |
+| Web search  | Tavily API          | Free tier (~1000 queries/month), LLM-shaped results with a built-in answer |
 
-Only **STT** and **LLM** (both via Groq) and **web search** (Brave) leave the device.
+Only **STT** and **LLM** (both via Groq) and **web search** (Tavily) leave the device.
 Wake word and TTS run entirely locally.
 
 ## Project status
@@ -53,16 +53,17 @@ This is a work in progress. Here's how far it's come:
   (so it won't hear itself once TTS lands)
 - [x] **STT** — captured audio → Groq Whisper → transcript (`bmo/stt/`), locked to
   English so accents aren't misdetected as another language
-- [x] **LLM request** + session history (`bmo/llm/`) — *basic request done; recursive
-  tool-use loop still pending*
+- [x] **LLM request** + session history (`bmo/llm/`) — full recursive **tool-use
+  loop**: `ChatSession.send()` runs any tool calls and only returns once the model
+  produces plain text
 - [x] **TTS** — final text → Piper → audio playback (`bmo/tts/`)
 - [x] **Test suite + CI** — pytest with mocked hardware/APIs, runs on GitHub Actions
-- [ ] **LLM tool-use loop** — handle tool calls recursively
-- [ ] **Brave web search tool**
+- [x] **Tavily web search tool** (`bmo/tools/tavily_search.py`) — registered as a
+  default LLM tool, so BMO can look things up when it doesn't already know
 
 The current `main.py` loop: detect wake word → beep → record until silence → transcribe
-→ send to the LLM → speak the reply with Piper. A `TODO` marks where the recursive
-tool-use loop will slot in (before speaking).
+→ send to the LLM (which runs the recursive tool-use loop internally, calling tools
+like Tavily search as needed) → speak the reply with Piper.
 
 ## Setup
 
@@ -81,7 +82,7 @@ cp .env.example .env   # then fill in your API keys
 Required env vars in `.env`:
 
 - `GROQ_API_KEY` — used for both STT (Whisper) and LLM inference
-- `BRAVE_API_KEY` — used for the web search tool
+- `TAVILY_API_KEY` — used for the web search tool
 
 Piper TTS needs a voice model (`.onnx` + `.onnx.json`) placed under
 `resources/voices/` (gitignored). BMO loads the first `.onnx` it finds there.
@@ -104,10 +105,11 @@ bmo/
   stt/
     transcribe.py    # PCM -> in-memory WAV -> Groq Whisper -> text
   llm/
-    chat.py          # session history + Groq Llama request (tool loop TBD)
+    chat.py          # session history + Groq Llama + recursive tool-use loop
   tts/
     speak.py         # Piper synthesis -> sounddevice playback
-  tools/             # pluggable LLM tools (e.g. web search)
+  tools/
+    tavily_search.py # Tavily web search tool exposed to the LLM
 tests/               # pytest suite (mocks hardware + APIs)
 ```
 

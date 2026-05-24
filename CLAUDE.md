@@ -8,7 +8,7 @@ BMO is a local voice assistant inspired by the character from Adventure Time. De
 
 wake word → audio capture → STT (Groq Whisper) → LLM tool-use loop (Groq Llama) → TTS (Piper) → audio playback
 
-Web search (Brave API) is available as an LLM tool.
+Web search (Tavily API) is available as an LLM tool.
 
 ## Architecture decisions
 
@@ -18,9 +18,9 @@ Web search (Brave API) is available as an LLM tool.
 |---|---|---|
 | Wake word | OpenWakeWord | Free, local, runs on Pi Zero 2W |
 | STT | Groq Whisper API | ~300ms transcription, generous free tier |
-| LLM | Groq + Llama 3.3 70B | Free tier, tool calling support, 1-2s responses |
+| LLM | Groq + Llama 4 Scout 17B | Free tier, fast, reliable structured tool calls (Llama 3.3 70B mis-formats them as `<function=...>` and Groq rejects with `tool_use_failed`) |
 | TTS | Piper TTS | Designed for edge devices, very low RAM |
-| Web search | Brave Search API | Free tier, 2000 queries/month |
+| Web search | Tavily API | Free tier (~1000 queries/month), LLM-shaped results with built-in answer |
 
 **LLM loop is recursive, not single-pass.** The pattern is:
 ```
@@ -49,7 +49,7 @@ cp .env.example .env             # then fill in API keys
 
 Required env vars (`.env`):
 - `GROQ_API_KEY` — used for both STT (Whisper) and LLM inference
-- `BRAVE_API_KEY` — used for web search tool
+- `TAVILY_API_KEY` — used for the web search tool
 
 Piper TTS requires downloading a voice model (`.onnx` + `.onnx.json`) and placing it under `resources/voices/` (alongside the wake-word model in `resources/`). `Speaker` auto-loads the first `.onnx` it finds there. These files are gitignored.
 
@@ -61,9 +61,9 @@ pytest
 ```
 
 `requirements-dev.txt` is the minimal set the tests import (pytest + numpy, pyaudio,
-groq, openwakeword, onnxruntime, sounddevice, piper-tts) — deliberately *not* the full
-runtime `requirements.txt`. The mocked objects' imports still resolve at module load, so
-those packages must be installed; requests/python-dotenv are not.
+groq, openwakeword, onnxruntime, sounddevice, piper-tts, requests) — deliberately
+*not* the full runtime `requirements.txt`. The mocked objects' imports still resolve
+at module load, so those packages must be installed; python-dotenv is not.
 
 Tests live in `tests/` and run with no hardware or network — the boundaries are
 mocked, so nothing hits a real mic, speaker, or the Groq API:
@@ -92,10 +92,11 @@ bmo/
   stt/
     transcribe.py    # Transcriber: PCM -> in-memory WAV -> Groq Whisper -> text
   llm/
-    chat.py          # ChatSession: session history + Groq Llama request (tool loop TBD)
+    chat.py          # ChatSession: session history + Groq Llama + recursive tool-use loop
   tts/
     speak.py         # Speaker: Piper synthesis -> sounddevice playback (voice from resources/voices/)
-  tools/             # pluggable LLM tools (e.g. web search)
+  tools/
+    tavily_search.py # Tavily web search tool exposed to the LLM
 tests/               # pytest suite (mocks hardware + APIs, see Testing)
 ```
 
@@ -114,8 +115,8 @@ section below. Include the README update in the push.
 - [x] Half-duplex mic — `pause()`/`resume()` stop capture while BMO handles a command
 - [x] TTS — final text synthesized by Piper and played back (`bmo/tts/speak.py`)
 - [x] Session conversation history — `ChatSession` keeps `messages[]` for the session
-- [~] LLM tool-use loop — basic Groq Llama request + session history done (`bmo/llm/chat.py`); recursive tool calls TBD
-- [ ] Brave search tool
+- [x] LLM tool-use loop — `ChatSession.send()` runs tool calls recursively until the model returns plain text (`bmo/llm/chat.py`)
+- [x] Web search tool — `bmo/tools/tavily_search.py` (Tavily API), registered as a default LLM tool
 
 ## Key dependencies
 
@@ -127,7 +128,7 @@ section below. Include the README update in the push.
 | `numpy` | Audio chunk processing |
 | `groq` | Whisper STT + LLM completions |
 | `piper-tts` | Local neural TTS |
-| `requests` | HTTP calls for Brave search |
+| `requests` | HTTP calls for Tavily search |
 | `python-dotenv` | Load `.env` API keys |
 
 ## Wake word notes

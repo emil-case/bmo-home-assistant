@@ -3,7 +3,7 @@
 # objects (PyAudio stream, openwakeword Model, Groq client) are mocked, but
 # their imports still resolve at module load, so the packages must be present.
 #
-# Deliberately excluded (not imported by any test): requests, python-dotenv.
+# Deliberately excluded (not imported by any test): python-dotenv.
 
 pytest
 
@@ -14,3 +14,4 @@ openwakeword    # wake_word.py
 onnxruntime     # imported at top of openwakeword/model.py
 sounddevice     # tts/speak.py (needs PortAudio system lib)
 piper-tts       # tts/speak.py
+requests        # tools/tavily_search.py

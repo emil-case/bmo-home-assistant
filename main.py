@@ -32,10 +32,9 @@ def main():
                 # Pause the mic so nothing is captured (incl. BMO's own voice once
                 # TTS lands) while handling the command, then resume.
                 capture.pause()
-                reply = chat.send(transcript)
+                reply = chat.send(transcript)  # runs the tool-use loop internally
                 print(f"BMO: {reply}")
                 speaker.say(reply)  # mic is paused, so BMO won't hear itself
-                # TODO: recursive tool-use loop goes here (before speaking).
                 capture.resume()
                 detector.reset()  # clear leftover audio so it doesn't re-trigger
                 print("Listening for wake word...")
