@@ -158,6 +158,12 @@ pip install -r requirements-dev.txt   # minimal test-only deps
 pytest
 ```
 
+Two layers: **unit tests** isolate each component (mocking its collaborators), and an
+**integration test** (`tests/test_integration.py`) builds a real BMO with a real
+`ChatSession` and `LanguageState` — only the mic/STT/TTS/Groq boundaries mocked — to
+prove the real delegation chain works (e.g. switching language actually changes the
+chat's system prompt).
+
 CI runs the suite on every push and PR to `main` via
 [`.github/workflows/tests.yml`](.github/workflows/tests.yml). No secrets needed — the
 tests never reach Groq. Test names follow the `given_when_then` convention.

@@ -122,6 +122,15 @@ The main loop now lives in `BMO` (`bmo/bmo.py`), not `main.py`, and is unit-test
 no hardware or network. `main.py` is just `BMO().run()` glue and isn't tested. Test
 names follow the `given_when_then` convention.
 
+**Integration tests** (`tests/test_integration.py`) build a *real* BMO with a real
+`ChatSession` and real `LanguageState` — only the hardware/API boundaries (mic, wake
+word, STT, TTS, the Groq client) are mocked. The unit tests isolate one piece at a
+time (and so each mock out a link of the `ChatSession → BMO.reply_language() →
+LanguageState` chain); the integration test runs that whole delegation chain for
+real, e.g. asserting `switch_language()` actually changes the chat's system prompt.
+Keep the two layers complementary: unit tests localize failures, integration tests
+prove the wiring.
+
 CI runs the suite on every push and PR to `main` via `.github/workflows/tests.yml`
 (installs PortAudio for pyaudio, then `requirements-dev.txt`, then `pytest`). No
 secrets needed — tests never reach Groq.
