@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 
-from bmo.llm.chat import SYSTEM_PROMPT, ChatSession, build_system_prompt
+from bmo.language.state import LanguageState
+from bmo.llm.chat import ChatSession, build_system_prompt
 
 
 def _text_response(reply):
@@ -15,6 +16,13 @@ def _client(reply):
     client = MagicMock()
     client.chat.completions.create.return_value = _text_response(reply)
     return client
+
+
+def _owner():
+    """A minimal stand-in for BMO. ChatSession only needs its owner to answer
+    reply_language(), and a default LanguageState does exactly that — so these
+    tests, which don't care about language, just hand it one."""
+    return LanguageState.default()
 
 
 def _make_tool_call(name, arguments, call_id="call_1"):
@@ -35,12 +43,13 @@ def _tool_call_response(name, arguments, call_id="call_1"):
 
 
 def test_given_new_session_when_created_then_history_starts_with_system_prompt():
-    chat = ChatSession(client=_client("hi"))
-    assert chat._messages == [{"role": "system", "content": SYSTEM_PROMPT}]
+    chat = ChatSession(client=_client("hi"), owner=_owner())
+    expected = build_system_prompt(LanguageState.default().reply_language())
+    assert chat._messages == [{"role": "system", "content": expected}]
 
 
 def test_given_user_message_when_sent_then_appends_user_and_assistant_turns_stripped():
-    chat = ChatSession(client=_client("  Hi there!  "))
+    chat = ChatSession(client=_client("  Hi there!  "), owner=_owner())
 
     reply = chat.send("hello")
 
@@ -60,7 +69,7 @@ def test_given_prior_turns_when_sending_again_then_full_history_is_sent():
         return _text_response("ok")
 
     client.chat.completions.create.side_effect = _capture
-    chat = ChatSession(client=client)
+    chat = ChatSession(client=client, owner=_owner())
 
     chat.send("first")
     chat.send("second")
@@ -76,7 +85,7 @@ def test_given_tool_call_when_sent_then_runs_tool_and_returns_followup_text():
         _text_response("It's sunny."),
     ]
     tool = MagicMock(return_value="sunny, 22C")
-    chat = ChatSession(client=client, tools={"web_search": tool}, tool_specs=[])
+    chat = ChatSession(client=client, tools={"web_search": tool}, tool_specs=[], owner=_owner())
 
     reply = chat.send("what's the weather?")
 
@@ -97,7 +106,7 @@ def test_given_unknown_tool_when_called_then_error_is_fed_back_not_raised():
         _tool_call_response("nope", "{}"),
         _text_response("Sorry, I can't do that."),
     ]
-    chat = ChatSession(client=client, tools={}, tool_specs=[])
+    chat = ChatSession(client=client, tools={}, tool_specs=[], owner=_owner())
 
     reply = chat.send("do the thing")
 
@@ -117,7 +126,7 @@ def test_given_tool_raises_when_called_then_error_is_fed_back_not_raised():
     def _boom(**_):
         raise RuntimeError("brave is down")
 
-    chat = ChatSession(client=client, tools={"web_search": _boom}, tool_specs=[])
+    chat = ChatSession(client=client, tools={"web_search": _boom}, tool_specs=[], owner=_owner())
 
     reply = chat.send("search")
 

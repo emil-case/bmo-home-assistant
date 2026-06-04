@@ -40,12 +40,15 @@ subclass. A component that needs a language-dependent value asks its owner (BMO)
 forwards the call to the current state. The component does **not** pass itself: the
 method it calls already names the value it wants (`reply_language()` / `stt_language()`),
 and BMO holds each component — so the answer depends on the method (which value) and the
-concrete state (which language). That's still a double dispatch, but resolved through
-**per-instance fields**, not an argument: the per-language values are plain data, set in
-each concrete state's constructor (`super().__init__(reply_clause, stt_code)`) and served
-by shared methods on the abstract class. The abstract `__init__` owns those fields, so
-every subclass must supply them; adding another constant-valued property is one
-`__init__` param, not an override per subclass. The values so far are the system prompt's
+concrete state (which language). That pairing is the double dispatch, resolved not by a
+passed argument but by which method runs on which subclass. The value accessors are
+**template methods**: the shared instance method (`reply_language()` / `stt_language()`)
+lives once on the abstract class and delegates to an abstract *classmethod* hook
+(`reply_language_constant()` / `stt_language_constant()`) that each concrete state fills
+with its constant (`self.__class__.reply_language_constant()`). So the per-language data
+sits on the subclass (no `__init__` carrying it), the lookup logic isn't duplicated per
+subclass, and ABC still forces every subclass to supply each constant. The values so far
+are the system prompt's
 reply-language clause ("Always reply in English/Spanish"), asked for by the `ChatSession`,
 and the Whisper STT language code (`en`/`es`), asked for by the `Transcriber` (the rest of
 the system prompt is fixed English and lives in `chat.py`'s `build_system_prompt`). The
@@ -56,7 +59,23 @@ next utterance.
 each state names its own successor (`EnglishState` ↔ `SpanishState`), so BMO doesn't
 decide which language is next — then calls `ChatSession.reset()`, which wipes
 history and reseeds the prompt in the new language. TTS voice is **not** switched yet
-(see Current state).
+(see below).
+
+### Language switching — status
+
+What a `switch_language()` call changes today, and what it doesn't:
+
+| Capability | State | Where |
+|---|---|---|
+| LLM reply language (system-prompt clause) | ✅ Done — flips on the chat reset | `llm/chat.py`, `language/state.py` |
+| STT input language (Whisper code) | ✅ Done — flips on the next utterance | `stt/transcribe.py`, `language/state.py` |
+| Carousel + boot state (`nextLanguage()` / `default()`) | ✅ Done — states own succession; BMO depends only on the abstract type | `language/state.py` |
+| **TTS output voice** | ❌ Missing — `Speaker` loads the first `.onnx` in `resources/voices/`; BMO's spoken voice doesn't change with the language | `tts/speak.py` |
+| **A trigger that calls `switch_language()`** | ❌ Missing — the method exists but nothing invokes it (planned: a GPIO button on the Pi) | — |
+
+Adding a language = add a concrete `LanguageState` (its constants + `nextLanguage()`)
+and splice it into the carousel. The reply/STT values come for free via the abstract
+methods; TTS voice and the trigger are the two pieces still unbuilt.
 
 ## Development environment
 
@@ -118,7 +137,7 @@ bmo/
     wake_word.py     # wraps openwakeword Model; process(chunk) -> bool
     cue.py           # play_acknowledgement() — beep when wake word fires (placeholder for BMO voice)
   language/
-    state.py         # LanguageState template + EnglishState/SpanishState; supplies the reply-language clause
+    state.py         # LanguageState template + EnglishState/SpanishState; serves the reply-language clause + STT code via template-method classmethod hooks, plus the carousel (nextLanguage/default)
   stt/
     transcribe.py    # Transcriber: PCM -> in-memory WAV -> Groq Whisper -> text
   llm/
@@ -149,7 +168,7 @@ section below. Include the README update in the push.
 - [x] Web search tool — `bmo/tools/tavily_search.py` (Tavily API), registered as a default LLM tool
 - [x] `BMO` orchestrator (`bmo/bmo.py`) — owns the components and the main loop; `main.py` is thin glue
 - [x] Component ownership — every component takes `owner=` and stores it (`self._owner`); BMO sets itself as owner at init, so components can later delegate shared decisions (e.g. active language) back to BMO
-- [x] Bilingual reply language (EN/ES) — `LanguageState` (`bmo/language/state.py`) supplies the system prompt's reply-language clause via double dispatch; `BMO.switch_language()` flips the state and resets the chat so replies switch language
+- [x] Bilingual reply language (EN/ES) — `LanguageState` (`bmo/language/state.py`) supplies the system prompt's reply-language clause; `BMO.switch_language()` advances the carousel and resets the chat so replies switch language (see **Language switching — status** above)
 - [x] Bilingual STT (EN/ES) — `Transcriber` asks BMO for the active Whisper language code via the same double dispatch (`stt_language`), resolved per `transcribe()` call so a switch lands on the next utterance (`bmo/stt/transcribe.py`)
 - [ ] TTS voice language switch — the Speaker still loads the first voice it finds in `resources/voices/`; switching the output *audio* voice per language is not wired yet (needs a second voice model)
 - [ ] Language switch trigger — `switch_language()` exists but nothing calls it yet (planned: a GPIO button on the Pi)

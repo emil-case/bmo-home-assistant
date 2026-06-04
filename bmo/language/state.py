@@ -1,16 +1,5 @@
 from abc import ABC, abstractmethod
 
-# The language-specific slice of the system prompt. The rest of the prompt
-# (BMO's persona, the "keep it short / no markdown" rules) is fixed English and
-# lives in bmo.llm.chat — only this clause is chosen per language.
-REPLY_IN_ENGLISH = "Always reply in English."
-REPLY_IN_SPANISH = "Always reply in Spanish."
-
-# Whisper transcription language, forced so STT doesn't auto-detect (a non-native
-# accent can otherwise be misheard as another language). ISO-639-1 codes.
-STT_LANGUAGE_ENGLISH = "en"
-STT_LANGUAGE_SPANISH = "es"
-
 
 class LanguageState(ABC):
     """Template for a language BMO can operate in. Concretes: English / Spanish.
@@ -19,21 +8,18 @@ class LanguageState(ABC):
     which forwards the call to the current state. The component doesn't pass
     itself — the method it calls already names the value it wants, and BMO holds
     each component, so the answer depends on the method (which value) and the
-    concrete state (which language). That pairing is still a double dispatch,
-    resolved through per-instance fields rather than an argument.
+    concrete state (which language). That pairing is the double dispatch.
 
-    The per-language values are plain data, so they live as fields set by each
-    concrete state's constructor and are served by the shared methods below.
-    The abstract `__init__` owns the fields, so every subclass must supply them;
-    adding another constant-valued property is one `__init__` param, not an
-    override in every subclass. The values so far are the system-prompt
-    reply-language clause (asked for by the ChatSession) and the Whisper STT
-    language code (asked for by the Transcriber).
+    The value accessors are **template methods**: the shared instance method
+    (`reply_language` / `stt_language`) lives here once and delegates to an
+    abstract *classmethod* hook (`reply_language_constant` / `stt_language_constant`)
+    that each concrete state fills with its constant. So the per-language data
+    sits on the subclass (no `__init__` carrying it), the lookup logic isn't
+    duplicated per subclass, and ABC still forces every subclass to supply each
+    constant. The values so far are the system-prompt reply-language clause
+    (asked for by the ChatSession) and the Whisper STT language code (asked for
+    by the Transcriber).
     """
-
-    def __init__(self, reply_language: str, stt_language: str):
-        self._reply_language = reply_language
-        self._stt_language = stt_language
 
     @classmethod
     def default(cls) -> "LanguageState":
@@ -42,13 +28,23 @@ class LanguageState(ABC):
         subclass; changing the boot language is a one-line edit."""
         return EnglishState()
 
+    @classmethod
+    @abstractmethod
+    def reply_language_constant(cls) -> str:
+        """Hook: this language's 'Always reply in X' clause."""
+
+    @classmethod
+    @abstractmethod
+    def stt_language_constant(cls) -> str:
+        """Hook: this language's ISO-639-1 Whisper code."""
+
     def reply_language(self) -> str:
         """The 'Always reply in X' clause spliced into the system prompt."""
-        return self._reply_language
+        return self.__class__.reply_language_constant()
 
     def stt_language(self) -> str:
         """The ISO-639-1 code Whisper is forced to transcribe in."""
-        return self._stt_language
+        return self.__class__.stt_language_constant()
 
     @abstractmethod
     def nextLanguage(self) -> "LanguageState":
@@ -58,16 +54,37 @@ class LanguageState(ABC):
 
 
 class EnglishState(LanguageState):
-    def __init__(self):
-        super().__init__(REPLY_IN_ENGLISH, STT_LANGUAGE_ENGLISH)
+    # English's own data — private to this class. The reply clause is the
+    # language-specific slice of the system prompt (the rest is fixed English and
+    # lives in bmo.llm.chat); the STT code is the ISO-639-1 language Whisper is
+    # forced to transcribe in, so it doesn't mishear an accent as another language.
+    _REPLY_CLAUSE = "Always reply in English."
+    _STT_CODE = "en"
+
+    @classmethod
+    def reply_language_constant(cls):
+        return cls._REPLY_CLAUSE
+
+    @classmethod
+    def stt_language_constant(cls):
+        return cls._STT_CODE
 
     def nextLanguage(self):
         return SpanishState()
 
 
 class SpanishState(LanguageState):
-    def __init__(self):
-        super().__init__(REPLY_IN_SPANISH, STT_LANGUAGE_SPANISH)
+    # Spanish's own data — private to this class (see EnglishState for what these are).
+    _REPLY_CLAUSE = "Always reply in Spanish."
+    _STT_CODE = "es"
+
+    @classmethod
+    def reply_language_constant(cls):
+        return cls._REPLY_CLAUSE
+
+    @classmethod
+    def stt_language_constant(cls):
+        return cls._STT_CODE
 
     def nextLanguage(self):
         return EnglishState()

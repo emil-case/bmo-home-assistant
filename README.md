@@ -82,6 +82,21 @@ tool-use loop internally, calling tools like Tavily search as needed) → speak 
 with Piper. `BMO` owns each component and sets itself as their `owner`, so a component
 can later delegate shared decisions (e.g. the active language) back to BMO.
 
+### Language switching at a glance
+
+BMO can run in **English or Spanish**. Where a switch lands today:
+
+| Part of the pipeline | Switches? |
+|---|---|
+| LLM reply language | ✅ yes — on the chat reset |
+| STT (Whisper) input language | ✅ yes — on the next utterance |
+| TTS output voice | ❌ not yet — still one fixed voice (needs a second voice model) |
+| Something that *triggers* the switch | ❌ not yet — `switch_language()` exists but nothing calls it (planned: a GPIO button) |
+
+So the **text** side (understanding you and choosing the reply language) is fully
+bilingual; what's left is BMO's **spoken voice** and a real-world **trigger** to flip
+languages.
+
 ## Setup
 
 Develop on **Linux** (the target is Raspberry Pi OS, Debian-based). This avoids
