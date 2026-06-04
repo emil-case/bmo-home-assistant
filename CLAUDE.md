@@ -34,13 +34,17 @@ This allows tool chaining (e.g. search → summarize). Loop until model returns 
 **Conversation history is session-scoped.** Keep a `messages[]` list and send it each turn so BMO feels coherent within a session. Wipe on restart.
 
 **Language is a State, resolved by double dispatch.** BMO holds a `LanguageState`
-(`EnglishState` / `SpanishState` in `bmo/language/state.py`). A component that needs a
+(`EnglishState` / `SpanishState` in `bmo/language/state.py`), created via
+`LanguageState.default()` so BMO depends only on the abstract type, not a concrete
+subclass. A component that needs a
 language-dependent value asks its owner (BMO), which forwards the call to the current
 state, *passing the component* — so the answer depends on both the component (which
 method it calls) and the concrete state (which subclass answers). Today the only such
 value is the system prompt's reply-language clause ("Always reply in English/Spanish");
 the rest of the prompt is fixed English and lives in `chat.py` (`build_system_prompt`).
-`BMO.switch_language()` flips the state and calls `ChatSession.reset()`, which wipes
+`BMO.switch_language()` advances the carousel — `state = state.nextLanguage()`, where
+each state names its own successor (`EnglishState` ↔ `SpanishState`), so BMO doesn't
+decide which language is next — then calls `ChatSession.reset()`, which wipes
 history and reseeds the prompt in the new language. STT language and TTS voice are
 **not** switched yet (see Current state).
 

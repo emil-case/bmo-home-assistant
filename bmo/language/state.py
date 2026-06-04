@@ -18,16 +18,35 @@ class LanguageState(ABC):
     is the system-prompt reply-language clause, asked for by the ChatSession.
     """
 
+    @classmethod
+    def default(cls) -> "LanguageState":
+        """The language BMO boots in (English). Centralizes the 'first' state
+        here so callers depend only on the abstract type, not a concrete
+        subclass; changing the boot language is a one-line edit."""
+        return EnglishState()
+
     @abstractmethod
     def reply_language(self, chat) -> str:
         """The 'Always reply in X' clause spliced into the system prompt."""
+
+    @abstractmethod
+    def nextLanguage(self) -> "LanguageState":
+        """The next state in the language carousel. Each state names its own
+        successor, so cycling through languages is `state = state.nextLanguage()`
+        — no central if/else that has to grow with every new language."""
 
 
 class EnglishState(LanguageState):
     def reply_language(self, chat):
         return REPLY_IN_ENGLISH
 
+    def nextLanguage(self):
+        return SpanishState()
+
 
 class SpanishState(LanguageState):
     def reply_language(self, chat):
         return REPLY_IN_SPANISH
+
+    def nextLanguage(self):
+        return EnglishState()

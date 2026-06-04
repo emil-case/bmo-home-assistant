@@ -1,7 +1,7 @@
 from bmo.audio.capture import AudioCapture, RATE
 from bmo.audio.cue import play_acknowledgement
 from bmo.audio.wake_word import WakeWordDetector
-from bmo.language.state import EnglishState, SpanishState
+from bmo.language.state import LanguageState
 from bmo.llm.chat import ChatSession
 from bmo.stt.transcribe import Transcriber
 from bmo.tts.speak import Speaker
@@ -19,7 +19,7 @@ class BMO:
     def __init__(self):
         # Set before building components: ChatSession asks for the prompt's
         # reply-language clause at construction, which routes back here.
-        self._languageState = EnglishState()
+        self._languageState = LanguageState.default()
         self._capture = AudioCapture(owner=self)
         self._detector = WakeWordDetector(owner=self)
         self._transcriber = Transcriber(owner=self)
@@ -32,9 +32,11 @@ class BMO:
         return self._languageState.reply_language(chat)
 
     def switch_language(self):
-        """Flip the language and reseed the chat so its system prompt — and thus
-        BMO's reply language — changes. Conversation history is wiped."""
-        self._languageState = SpanishState() if isinstance(self._languageState, EnglishState) else EnglishState()
+        """Advance to the next language in the carousel and reseed the chat so
+        its system prompt — and thus BMO's reply language — changes. Each state
+        names its own successor, so BMO doesn't decide which language is next.
+        Conversation history is wiped."""
+        self._languageState = self._languageState.nextLanguage()
         self._chat.reset()
 
     def run(self):

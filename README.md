@@ -65,7 +65,9 @@ This is a work in progress. Here's how far it's come:
   (e.g. active language) back to BMO. `main.py` is now thin glue
 - [x] **Bilingual replies (English / Spanish)** — `LanguageState` (`bmo/language/state.py`)
   holds the language; the LLM system prompt's "Always reply in …" clause is chosen per
-  language and the rest stays fixed. `BMO.switch_language()` flips it and resets the chat
+  language and the rest stays fixed. The states form a carousel — each names its own
+  successor via `nextLanguage()` and the boot language comes from `LanguageState.default()`,
+  so BMO never references a concrete state. `BMO.switch_language()` advances it and resets the chat
 - [ ] **Switching the input/output *audio* language** — STT is still locked to English
   and TTS loads the first voice; only the LLM's reply language switches so far
 - [ ] **A trigger to switch language** — `switch_language()` exists but isn't wired to
