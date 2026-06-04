@@ -29,7 +29,8 @@ class ChatSession:
     finally returns plain text, which is what gets spoken.
     """
 
-    def __init__(self, model: str = DEFAULT_MODEL, client=None, tools=None, tool_specs=None):
+    def __init__(self, model: str = DEFAULT_MODEL, client=None, tools=None, tool_specs=None, owner=None):
+        self._owner = owner
         self._client = client or Groq()
         self._model = model
         self._tools = DEFAULT_TOOLS if tools is None else tools

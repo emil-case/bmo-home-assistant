@@ -8,7 +8,8 @@ DEFAULT_MODEL = _RESOURCES_DIR / "hey_bmo_v2.0.onnx"
 
 
 class WakeWordDetector:
-    def __init__(self, model_path: Path | str = DEFAULT_MODEL, threshold: float = 0.3):
+    def __init__(self, model_path: Path | str = DEFAULT_MODEL, threshold: float = 0.3, owner=None):
+        self._owner = owner
         self._model = Model(wakeword_model_paths=[str(model_path)])
         self._threshold = threshold
 

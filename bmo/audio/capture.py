@@ -9,7 +9,8 @@ SILENCE_DURATION = 1.5    # seconds of silence to stop recording
 
 
 class AudioCapture:
-    def __init__(self):
+    def __init__(self, owner=None):
+        self._owner = owner
         self._pa = pyaudio.PyAudio()
         self._stream = self._pa.open(
             format=FORMAT,

@@ -27,7 +27,8 @@ def _pcm_to_wav(pcm: bytes, rate: int = RATE) -> io.BytesIO:
 
 
 class Transcriber:
-    def __init__(self, model: str = DEFAULT_MODEL, language: str = DEFAULT_LANGUAGE, client=None):
+    def __init__(self, model: str = DEFAULT_MODEL, language: str = DEFAULT_LANGUAGE, client=None, owner=None):
+        self._owner = owner
         self._client = client or Groq()
         self._model = model
         self._language = language

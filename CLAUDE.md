@@ -73,8 +73,10 @@ mocked, so nothing hits a real mic, speaker, or the Groq API:
 - **Hardware wrappers** (`AudioCapture`, `WakeWordDetector`) are tested by patching
   `pyaudio` / the openwakeword `Model`.
 
-`main.py`'s loop is glue and isn't unit-tested — verify it manually. Test names follow
-the `given_when_then` convention.
+The main loop now lives in `BMO` (`bmo/bmo.py`), not `main.py`, and is unit-tested
+(`tests/test_bmo.py`) by patching the component classes in the `bmo.bmo` namespace —
+no hardware or network. `main.py` is just `BMO().run()` glue and isn't tested. Test
+names follow the `given_when_then` convention.
 
 CI runs the suite on every push and PR to `main` via `.github/workflows/tests.yml`
 (installs PortAudio for pyaudio, then `requirements-dev.txt`, then `pytest`). No
@@ -83,8 +85,9 @@ secrets needed — tests never reach Groq.
 ## Package structure
 
 ```
-main.py              # entry point, main loop
+main.py              # entry point — loads .env, builds BMO, runs it (thin)
 bmo/
+  bmo.py             # BMO: orchestrator; owns the components and the main loop
   audio/
     capture.py       # owns PyAudio stream; read_chunk(), record_until_silence(), pause()/resume()
     wake_word.py     # wraps openwakeword Model; process(chunk) -> bool
@@ -117,6 +120,8 @@ section below. Include the README update in the push.
 - [x] Session conversation history — `ChatSession` keeps `messages[]` for the session
 - [x] LLM tool-use loop — `ChatSession.send()` runs tool calls recursively until the model returns plain text (`bmo/llm/chat.py`)
 - [x] Web search tool — `bmo/tools/tavily_search.py` (Tavily API), registered as a default LLM tool
+- [x] `BMO` orchestrator (`bmo/bmo.py`) — owns the components and the main loop; `main.py` is thin glue
+- [x] Component ownership — every component takes `owner=` and stores it (`self._owner`); BMO sets itself as owner at init, so components can later delegate shared decisions (e.g. active language) back to BMO
 
 ## Key dependencies
 

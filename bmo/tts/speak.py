@@ -27,7 +27,8 @@ class Speaker:
     (model_path + ".json"), so only the .onnx path is required.
     """
 
-    def __init__(self, model_path: Path | str | None = None, voice=None):
+    def __init__(self, model_path: Path | str | None = None, voice=None, owner=None):
+        self._owner = owner
         if voice is not None:
             self._voice = voice
         else:
