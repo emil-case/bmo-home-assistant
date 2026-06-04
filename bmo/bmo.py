@@ -26,15 +26,16 @@ class BMO:
         self._chat = ChatSession(owner=self)
         self._speaker = Speaker(owner=self)
 
-    def reply_language(self, chat):
+    def reply_language(self):
         """A component asks for the active language's reply clause; route it to
-        the current state (double dispatch on component + state)."""
-        return self._languageState.reply_language(chat)
+        the current state. The method name is the dispatch — the caller doesn't
+        pass itself, since BMO already holds each component."""
+        return self._languageState.reply_language()
 
-    def stt_language(self, transcriber):
+    def stt_language(self):
         """The Transcriber asks for the active language's Whisper code; route it
-        to the current state (double dispatch on component + state)."""
-        return self._languageState.stt_language(transcriber)
+        to the current state (dispatch by method name, not a passed component)."""
+        return self._languageState.stt_language()
 
     def switch_language(self):
         """Advance to the next language in the carousel and reseed the chat so

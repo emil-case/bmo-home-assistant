@@ -54,7 +54,7 @@ class ChatSession:
         state — and falls back to English when there's no owner (e.g. in tests).
         """
         if self._owner is not None:
-            prompt = build_system_prompt(self._owner.reply_language(self))
+            prompt = build_system_prompt(self._owner.reply_language())
         else:
             prompt = SYSTEM_PROMPT
         return {"role": "system", "content": prompt}

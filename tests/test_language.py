@@ -12,19 +12,19 @@ from bmo.language.state import (
 
 
 def test_given_english_state_when_asked_then_returns_english_reply_clause():
-    assert EnglishState().reply_language(None) == REPLY_IN_ENGLISH
+    assert EnglishState().reply_language() == REPLY_IN_ENGLISH
 
 
 def test_given_spanish_state_when_asked_then_returns_spanish_reply_clause():
-    assert SpanishState().reply_language(None) == REPLY_IN_SPANISH
+    assert SpanishState().reply_language() == REPLY_IN_SPANISH
 
 
 def test_given_english_state_when_asked_then_returns_english_stt_code():
-    assert EnglishState().stt_language(None) == STT_LANGUAGE_ENGLISH == "en"
+    assert EnglishState().stt_language() == STT_LANGUAGE_ENGLISH == "en"
 
 
 def test_given_spanish_state_when_asked_then_returns_spanish_stt_code():
-    assert SpanishState().stt_language(None) == STT_LANGUAGE_SPANISH == "es"
+    assert SpanishState().stt_language() == STT_LANGUAGE_SPANISH == "es"
 
 
 def test_given_abstract_template_when_default_requested_then_returns_english():
@@ -49,6 +49,6 @@ def test_given_carousel_when_advanced_twice_then_returns_to_english():
 
 
 def test_given_abstract_template_when_instantiated_then_raises():
-    # LanguageState is a template (ABC): the abstract methods must be implemented.
+    # LanguageState is a template (ABC): nextLanguage() must be implemented.
     with pytest.raises(TypeError):
         LanguageState()

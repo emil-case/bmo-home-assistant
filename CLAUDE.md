@@ -36,16 +36,22 @@ This allows tool chaining (e.g. search → summarize). Loop until model returns 
 **Language is a State, resolved by double dispatch.** BMO holds a `LanguageState`
 (`EnglishState` / `SpanishState` in `bmo/language/state.py`), created via
 `LanguageState.default()` so BMO depends only on the abstract type, not a concrete
-subclass. A component that needs a
-language-dependent value asks its owner (BMO), which forwards the call to the current
-state, *passing the component* — so the answer depends on both the component (which
-method it calls) and the concrete state (which subclass answers). The values so far are
-the system prompt's reply-language clause ("Always reply in English/Spanish"), asked for
-by the `ChatSession`, and the Whisper STT language code (`en`/`es`), asked for by the
-`Transcriber` (the rest of the system prompt is fixed English and lives in `chat.py`'s
-`build_system_prompt`). The `ChatSession` resolves its clause once per reset (so a switch
-takes effect on the reseed); the `Transcriber` resolves its code per `transcribe()` call,
-so a switch lands on the very next utterance.
+subclass. A component that needs a language-dependent value asks its owner (BMO), which
+forwards the call to the current state. The component does **not** pass itself: the
+method it calls already names the value it wants (`reply_language()` / `stt_language()`),
+and BMO holds each component — so the answer depends on the method (which value) and the
+concrete state (which language). That's still a double dispatch, but resolved through
+**per-instance fields**, not an argument: the per-language values are plain data, set in
+each concrete state's constructor (`super().__init__(reply_clause, stt_code)`) and served
+by shared methods on the abstract class. The abstract `__init__` owns those fields, so
+every subclass must supply them; adding another constant-valued property is one
+`__init__` param, not an override per subclass. The values so far are the system prompt's
+reply-language clause ("Always reply in English/Spanish"), asked for by the `ChatSession`,
+and the Whisper STT language code (`en`/`es`), asked for by the `Transcriber` (the rest of
+the system prompt is fixed English and lives in `chat.py`'s `build_system_prompt`). The
+`ChatSession` resolves its clause once per reset (so a switch takes effect on the reseed);
+the `Transcriber` resolves its code per `transcribe()` call, so a switch lands on the very
+next utterance.
 `BMO.switch_language()` advances the carousel — `state = state.nextLanguage()`, where
 each state names its own successor (`EnglishState` ↔ `SpanishState`), so BMO doesn't
 decide which language is next — then calls `ChatSession.reset()`, which wipes

@@ -40,7 +40,7 @@ class Transcriber:
         present so a language switch takes effect immediately, else fall back to
         the language fixed at construction."""
         if self._owner is not None:
-            return self._owner.stt_language(self)
+            return self._owner.stt_language()
         return self._language
 
     def transcribe(self, pcm: bytes) -> str:

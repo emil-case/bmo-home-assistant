@@ -16,13 +16,24 @@ class LanguageState(ABC):
     """Template for a language BMO can operate in. Concretes: English / Spanish.
 
     A component that needs a language-dependent value asks its owner (BMO),
-    which forwards the call to the current state — passing the asking component.
-    There's one method per component, so the answer depends on both the
-    component (which method is called) and the concrete state (which subclass
-    answers): that pairing is the double dispatch. The values so far are the
-    system-prompt reply-language clause (asked for by the ChatSession) and the
-    Whisper STT language code (asked for by the Transcriber).
+    which forwards the call to the current state. The component doesn't pass
+    itself — the method it calls already names the value it wants, and BMO holds
+    each component, so the answer depends on the method (which value) and the
+    concrete state (which language). That pairing is still a double dispatch,
+    resolved through per-instance fields rather than an argument.
+
+    The per-language values are plain data, so they live as fields set by each
+    concrete state's constructor and are served by the shared methods below.
+    The abstract `__init__` owns the fields, so every subclass must supply them;
+    adding another constant-valued property is one `__init__` param, not an
+    override in every subclass. The values so far are the system-prompt
+    reply-language clause (asked for by the ChatSession) and the Whisper STT
+    language code (asked for by the Transcriber).
     """
+
+    def __init__(self, reply_language: str, stt_language: str):
+        self._reply_language = reply_language
+        self._stt_language = stt_language
 
     @classmethod
     def default(cls) -> "LanguageState":
@@ -31,13 +42,13 @@ class LanguageState(ABC):
         subclass; changing the boot language is a one-line edit."""
         return EnglishState()
 
-    @abstractmethod
-    def reply_language(self, chat) -> str:
+    def reply_language(self) -> str:
         """The 'Always reply in X' clause spliced into the system prompt."""
+        return self._reply_language
 
-    @abstractmethod
-    def stt_language(self, transcriber) -> str:
+    def stt_language(self) -> str:
         """The ISO-639-1 code Whisper is forced to transcribe in."""
+        return self._stt_language
 
     @abstractmethod
     def nextLanguage(self) -> "LanguageState":
@@ -47,22 +58,16 @@ class LanguageState(ABC):
 
 
 class EnglishState(LanguageState):
-    def reply_language(self, chat):
-        return REPLY_IN_ENGLISH
-
-    def stt_language(self, transcriber):
-        return STT_LANGUAGE_ENGLISH
+    def __init__(self):
+        super().__init__(REPLY_IN_ENGLISH, STT_LANGUAGE_ENGLISH)
 
     def nextLanguage(self):
         return SpanishState()
 
 
 class SpanishState(LanguageState):
-    def reply_language(self, chat):
-        return REPLY_IN_SPANISH
-
-    def stt_language(self, transcriber):
-        return STT_LANGUAGE_SPANISH
+    def __init__(self):
+        super().__init__(REPLY_IN_SPANISH, STT_LANGUAGE_SPANISH)
 
     def nextLanguage(self):
         return EnglishState()
