@@ -60,10 +60,15 @@ This is a work in progress. Here's how far it's come:
 - [x] **Test suite + CI** — pytest with mocked hardware/APIs, runs on GitHub Actions
 - [x] **Tavily web search tool** (`bmo/tools/tavily_search.py`) — registered as a
   default LLM tool, so BMO can look things up when it doesn't already know
+- [x] **`BMO` orchestrator** (`bmo/bmo.py`) — owns the components and the main loop;
+  each component is initialized with its `owner` so it can delegate shared decisions
+  (e.g. active language) back to BMO. `main.py` is now thin glue
 
-The current `main.py` loop: detect wake word → beep → record until silence → transcribe
-→ send to the LLM (which runs the recursive tool-use loop internally, calling tools
-like Tavily search as needed) → speak the reply with Piper.
+The main loop lives in the **`BMO` orchestrator** (`bmo/bmo.py`): detect wake word →
+beep → record until silence → transcribe → send to the LLM (which runs the recursive
+tool-use loop internally, calling tools like Tavily search as needed) → speak the reply
+with Piper. `BMO` owns each component and sets itself as their `owner`, so a component
+can later delegate shared decisions (e.g. the active language) back to BMO.
 
 ## Setup
 
@@ -96,8 +101,9 @@ python main.py
 ## Project structure
 
 ```
-main.py              # entry point, main loop
+main.py              # entry point — loads .env, builds BMO, runs it (thin glue)
 bmo/
+  bmo.py             # BMO orchestrator — owns the components and the main loop
   audio/
     capture.py       # PyAudio stream; read_chunk(), record_until_silence(), pause()/resume()
     wake_word.py     # wraps openwakeword Model; process(chunk) -> bool
