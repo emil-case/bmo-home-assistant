@@ -1,6 +1,7 @@
 from bmo.audio.capture import AudioCapture, RATE
 from bmo.audio.cue import play_acknowledgement
 from bmo.audio.wake_word import WakeWordDetector
+from bmo.language.state import EnglishState, SpanishState
 from bmo.llm.chat import ChatSession
 from bmo.stt.transcribe import Transcriber
 from bmo.tts.speak import Speaker
@@ -16,11 +17,25 @@ class BMO:
     """
 
     def __init__(self):
+        # Set before building components: ChatSession asks for the prompt's
+        # reply-language clause at construction, which routes back here.
+        self._languageState = EnglishState()
         self._capture = AudioCapture(owner=self)
         self._detector = WakeWordDetector(owner=self)
         self._transcriber = Transcriber(owner=self)
         self._chat = ChatSession(owner=self)
         self._speaker = Speaker(owner=self)
+
+    def reply_language(self, chat):
+        """A component asks for the active language's reply clause; route it to
+        the current state (double dispatch on component + state)."""
+        return self._languageState.reply_language(chat)
+
+    def switch_language(self):
+        """Flip the language and reseed the chat so its system prompt — and thus
+        BMO's reply language — changes. Conversation history is wiped."""
+        self._state = SpanishState() if isinstance(self._languageState, EnglishState) else EnglishState()
+        self._languageState.reset()
 
     def run(self):
         """Listen for the wake word forever, handling one command at a time."""

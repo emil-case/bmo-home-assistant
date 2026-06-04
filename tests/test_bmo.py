@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from bmo.bmo import BMO
+from bmo.language.state import EnglishState, SpanishState
 
 
 @contextmanager
@@ -104,3 +105,25 @@ def test_given_no_wake_word_when_running_then_never_handles_command():
         m.chat.send.assert_not_called()
         m.speaker.say.assert_not_called()
         m.capture.close.assert_called_once()
+
+
+def test_given_new_bmo_when_created_then_starts_in_english():
+    with _bmo() as (bmo, _):
+        assert isinstance(bmo._state, EnglishState)
+
+
+def test_given_chat_asks_bmo_when_reply_language_queried_then_routes_to_state():
+    with _bmo() as (bmo, m):
+        assert bmo.reply_language(m.chat) == "Always reply in English."
+        bmo.switch_language()
+        assert bmo.reply_language(m.chat) == "Always reply in Spanish."
+
+
+def test_given_switch_language_when_called_then_flips_state_and_resets_chat():
+    with _bmo() as (bmo, m):
+        bmo.switch_language()
+        assert isinstance(bmo._state, SpanishState)
+        m.chat.reset.assert_called_once()
+
+        bmo.switch_language()
+        assert isinstance(bmo._state, EnglishState)

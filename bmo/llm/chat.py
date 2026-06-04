@@ -2,6 +2,7 @@ import json
 
 from groq import Groq
 
+from bmo.language.state import REPLY_IN_ENGLISH
 from bmo.tools.tavily_search import TOOL_SPEC as WEB_SEARCH_SPEC, search as web_search
 
 # Llama 4 Scout on Groq: free tier, fast, and reliable at structured tool calls.
@@ -9,12 +10,21 @@ from bmo.tools.tavily_search import TOOL_SPEC as WEB_SEARCH_SPEC, search as web_
 # tool calls that Groq rejects with `tool_use_failed`.)
 DEFAULT_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 
-# Responses are spoken aloud via TTS, so keep them short and plain.
-SYSTEM_PROMPT = (
-    "You are BMO, a cheerful little living video game console from Adventure Time. "
-    "You are a helpful voice assistant. Always reply in English. Keep replies short "
-    "and conversational since they will be read aloud. Avoid lists, markdown, and emoji."
-)
+# Responses are spoken aloud via TTS, so keep them short and plain. Only the
+# reply-language clause varies per language (supplied by the active LanguageState
+# via BMO); everything else is fixed English and lives here.
+def build_system_prompt(reply_language: str = REPLY_IN_ENGLISH) -> str:
+    return (
+        "You are BMO, a cheerful little living video game console from Adventure Time. "
+        "You are a helpful voice assistant. "
+        f"{reply_language} "
+        "Keep replies short and conversational since they will be read aloud. "
+        "Avoid lists, markdown, and emoji."
+    )
+
+
+# Default (English) prompt — used when there's no owner to supply a language.
+SYSTEM_PROMPT = build_system_prompt()
 
 DEFAULT_TOOLS = {"web_search": web_search}
 DEFAULT_TOOL_SPECS = [WEB_SEARCH_SPEC]
@@ -35,7 +45,23 @@ class ChatSession:
         self._model = model
         self._tools = DEFAULT_TOOLS if tools is None else tools
         self._tool_specs = DEFAULT_TOOL_SPECS if tool_specs is None else tool_specs
-        self._messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        self._messages = [self._system_message()]
+
+    def _system_message(self) -> dict:
+        """System turn carrying the reply-language clause for the active language.
+
+        Asks the owner (BMO) for the clause — which it routes to its current
+        state — and falls back to English when there's no owner (e.g. in tests).
+        """
+        if self._owner is not None:
+            prompt = build_system_prompt(self._owner.reply_language(self))
+        else:
+            prompt = SYSTEM_PROMPT
+        return {"role": "system", "content": prompt}
+
+    def reset(self) -> None:
+        """Wipe history and reseed the system prompt for the current language."""
+        self._messages = [self._system_message()]
 
     def send(self, user_text: str) -> str:
         """Send a user message, run any tool calls, return the spoken reply."""

@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock
 
-from bmo.llm.chat import SYSTEM_PROMPT, ChatSession
+from bmo.llm.chat import SYSTEM_PROMPT, ChatSession, build_system_prompt
 
 
 def _text_response(reply):
@@ -125,3 +125,33 @@ def test_given_tool_raises_when_called_then_error_is_fed_back_not_raised():
     tool_msg = chat._messages[3]
     assert tool_msg["role"] == "tool"
     assert "brave is down" in tool_msg["content"]
+
+
+def test_given_owner_when_created_then_prompt_uses_owner_reply_language():
+    owner = MagicMock()
+    owner.reply_language.return_value = "Always reply in Spanish."
+
+    chat = ChatSession(client=_client("ok"), owner=owner)
+
+    assert chat._messages == [
+        {"role": "system", "content": build_system_prompt("Always reply in Spanish.")}
+    ]
+    owner.reply_language.assert_called_once()
+
+
+def test_given_history_when_reset_then_wipes_and_reseeds_current_prompt():
+    owner = MagicMock()
+    # Clause at construction (English), then a different one at reset (Spanish).
+    owner.reply_language.side_effect = [
+        "Always reply in English.",
+        "Always reply in Spanish.",
+    ]
+    chat = ChatSession(client=_client("ok"), owner=owner)
+
+    chat.send("hello")
+    chat.reset()
+
+    # History is wiped back to a single system turn carrying the current clause.
+    assert chat._messages == [
+        {"role": "system", "content": build_system_prompt("Always reply in Spanish.")}
+    ]
