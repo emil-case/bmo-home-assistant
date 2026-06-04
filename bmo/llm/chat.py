@@ -45,9 +45,9 @@ class ChatSession:
         self._model = model
         self._tools = DEFAULT_TOOLS if tools is None else tools
         self._tool_specs = DEFAULT_TOOL_SPECS if tool_specs is None else tool_specs
-        self._messages = [self._system_message()]
+        self._messages = [self._build_system_message()]
 
-    def _system_message(self) -> dict:
+    def _build_system_message(self) -> dict:
         """System turn carrying the reply-language clause for the active language.
 
         Asks the owner (BMO) for the clause — which it routes to its current
@@ -61,7 +61,7 @@ class ChatSession:
 
     def reset(self) -> None:
         """Wipe history and reseed the system prompt for the current language."""
-        self._messages = [self._system_message()]
+        self._messages = [self._build_system_message()]
 
     def send(self, user_text: str) -> str:
         """Send a user message, run any tool calls, return the spoken reply."""

@@ -34,8 +34,8 @@ class BMO:
     def switch_language(self):
         """Flip the language and reseed the chat so its system prompt — and thus
         BMO's reply language — changes. Conversation history is wiped."""
-        self._state = SpanishState() if isinstance(self._languageState, EnglishState) else EnglishState()
-        self._languageState.reset()
+        self._languageState = SpanishState() if isinstance(self._languageState, EnglishState) else EnglishState()
+        self._chat.reset()
 
     def run(self):
         """Listen for the wake word forever, handling one command at a time."""
