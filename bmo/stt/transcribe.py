@@ -9,9 +9,11 @@ from bmo.audio.capture import RATE
 # for short voice commands. Swap to whisper-large-v3 for higher accuracy.
 DEFAULT_MODEL = "whisper-large-v3-turbo"
 
-# Force the transcription language so Whisper doesn't auto-detect (a non-native
-# English accent can otherwise be misheard as another language). ISO-639-1 code.
-DEFAULT_LANGUAGE = "en" #i can modify this to support other languages if needed, but for now I'm sticking with English.
+# Fallback transcription language when there's no owner to ask (e.g. in tests).
+# In a running BMO the active language comes from the owner's LanguageState; this
+# is just the floor. Forcing a language stops Whisper auto-detecting (a non-native
+# accent can otherwise be misheard as another language). ISO-639-1 code.
+DEFAULT_LANGUAGE = "en"
 
 
 def _pcm_to_wav(pcm: bytes, rate: int = RATE) -> io.BytesIO:
@@ -33,12 +35,20 @@ class Transcriber:
         self._model = model
         self._language = language
 
+    def _resolve_language(self) -> str:
+        """Active STT language: ask the owner (BMO -> current LanguageState) when
+        present so a language switch takes effect immediately, else fall back to
+        the language fixed at construction."""
+        if self._owner is not None:
+            return self._owner.stt_language(self)
+        return self._language
+
     def transcribe(self, pcm: bytes) -> str:
         """Transcribe raw PCM audio (from AudioCapture) to text."""
         wav = _pcm_to_wav(pcm)
         result = self._client.audio.transcriptions.create(
             file=("audio.wav", wav, "audio/wav"),
             model=self._model,
-            language=self._language,
+            language=self._resolve_language(),
         )
         return result.text.strip()

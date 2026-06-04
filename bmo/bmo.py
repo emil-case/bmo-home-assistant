@@ -31,6 +31,11 @@ class BMO:
         the current state (double dispatch on component + state)."""
         return self._languageState.reply_language(chat)
 
+    def stt_language(self, transcriber):
+        """The Transcriber asks for the active language's Whisper code; route it
+        to the current state (double dispatch on component + state)."""
+        return self._languageState.stt_language(transcriber)
+
     def switch_language(self):
         """Advance to the next language in the carousel and reseed the chat so
         its system prompt — and thus BMO's reply language — changes. Each state

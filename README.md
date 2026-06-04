@@ -51,8 +51,8 @@ This is a work in progress. Here's how far it's come:
 - [x] **Acknowledgement beep** when the wake word fires (placeholder for a BMO voice clip)
 - [x] **Half-duplex mic** — capture pauses while BMO handles a command, then resumes
   (so it won't hear itself once TTS lands)
-- [x] **STT** — captured audio → Groq Whisper → transcript (`bmo/stt/`), locked to
-  English so accents aren't misdetected as another language
+- [x] **STT** — captured audio → Groq Whisper → transcript (`bmo/stt/`); the language
+  is forced (not auto-detected) so accents aren't misheard as another language
 - [x] **LLM request** + session history (`bmo/llm/`) — full recursive **tool-use
   loop**: `ChatSession.send()` runs any tool calls and only returns once the model
   produces plain text
@@ -68,8 +68,11 @@ This is a work in progress. Here's how far it's come:
   language and the rest stays fixed. The states form a carousel — each names its own
   successor via `nextLanguage()` and the boot language comes from `LanguageState.default()`,
   so BMO never references a concrete state. `BMO.switch_language()` advances it and resets the chat
-- [ ] **Switching the input/output *audio* language** — STT is still locked to English
-  and TTS loads the first voice; only the LLM's reply language switches so far
+- [x] **Bilingual STT (English / Spanish)** — the `Transcriber` asks BMO for the active
+  Whisper language code through the same double dispatch (`stt_language`), resolved on each
+  transcription so a switch takes effect on the next utterance
+- [ ] **Switching the output *audio* voice** — TTS still loads the first voice it finds,
+  so BMO's spoken voice doesn't change with the language yet (needs a second voice model)
 - [ ] **A trigger to switch language** — `switch_language()` exists but isn't wired to
   anything yet (planned: a GPIO button on the Pi)
 
@@ -118,7 +121,7 @@ bmo/
     wake_word.py     # wraps openwakeword Model; process(chunk) -> bool
     cue.py           # acknowledgement beep
   language/
-    state.py         # LanguageState (English/Spanish) — supplies the reply-language clause
+    state.py         # LanguageState (English/Spanish) — supplies the reply-language clause + STT code
   stt/
     transcribe.py    # PCM -> in-memory WAV -> Groq Whisper -> text
   llm/

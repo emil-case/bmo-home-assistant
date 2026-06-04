@@ -49,3 +49,19 @@ def test_given_custom_language_when_transcribing_then_sends_that_language():
 
     _, kwargs = client.audio.transcriptions.create.call_args
     assert kwargs["language"] == "es"
+
+
+def test_given_owner_when_transcribing_then_uses_owners_stt_language():
+    # With an owner, the active language comes from it (BMO -> LanguageState),
+    # so a language switch takes effect on the very next transcription.
+    client = MagicMock()
+    client.audio.transcriptions.create.return_value = MagicMock(text="hola")
+    owner = MagicMock()
+    owner.stt_language.return_value = "es"
+
+    # Constructor language is English, but the owner's Spanish must win.
+    Transcriber(client=client, owner=owner).transcribe(b"\x00\x00" * 1600)
+
+    _, kwargs = client.audio.transcriptions.create.call_args
+    assert kwargs["language"] == "es"
+    owner.stt_language.assert_called_once()

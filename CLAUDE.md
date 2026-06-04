@@ -39,14 +39,18 @@ This allows tool chaining (e.g. search → summarize). Loop until model returns 
 subclass. A component that needs a
 language-dependent value asks its owner (BMO), which forwards the call to the current
 state, *passing the component* — so the answer depends on both the component (which
-method it calls) and the concrete state (which subclass answers). Today the only such
-value is the system prompt's reply-language clause ("Always reply in English/Spanish");
-the rest of the prompt is fixed English and lives in `chat.py` (`build_system_prompt`).
+method it calls) and the concrete state (which subclass answers). The values so far are
+the system prompt's reply-language clause ("Always reply in English/Spanish"), asked for
+by the `ChatSession`, and the Whisper STT language code (`en`/`es`), asked for by the
+`Transcriber` (the rest of the system prompt is fixed English and lives in `chat.py`'s
+`build_system_prompt`). The `ChatSession` resolves its clause once per reset (so a switch
+takes effect on the reseed); the `Transcriber` resolves its code per `transcribe()` call,
+so a switch lands on the very next utterance.
 `BMO.switch_language()` advances the carousel — `state = state.nextLanguage()`, where
 each state names its own successor (`EnglishState` ↔ `SpanishState`), so BMO doesn't
 decide which language is next — then calls `ChatSession.reset()`, which wipes
-history and reseeds the prompt in the new language. STT language and TTS voice are
-**not** switched yet (see Current state).
+history and reseeds the prompt in the new language. TTS voice is **not** switched yet
+(see Current state).
 
 ## Development environment
 
@@ -140,7 +144,8 @@ section below. Include the README update in the push.
 - [x] `BMO` orchestrator (`bmo/bmo.py`) — owns the components and the main loop; `main.py` is thin glue
 - [x] Component ownership — every component takes `owner=` and stores it (`self._owner`); BMO sets itself as owner at init, so components can later delegate shared decisions (e.g. active language) back to BMO
 - [x] Bilingual reply language (EN/ES) — `LanguageState` (`bmo/language/state.py`) supplies the system prompt's reply-language clause via double dispatch; `BMO.switch_language()` flips the state and resets the chat so replies switch language
-- [ ] STT / TTS language switch — Whisper is still forced to English (`bmo/stt/transcribe.py`) and the Speaker loads the first voice it finds; switching the input/output *audio* language is not wired yet
+- [x] Bilingual STT (EN/ES) — `Transcriber` asks BMO for the active Whisper language code via the same double dispatch (`stt_language`), resolved per `transcribe()` call so a switch lands on the next utterance (`bmo/stt/transcribe.py`)
+- [ ] TTS voice language switch — the Speaker still loads the first voice it finds in `resources/voices/`; switching the output *audio* voice per language is not wired yet (needs a second voice model)
 - [ ] Language switch trigger — `switch_language()` exists but nothing calls it yet (planned: a GPIO button on the Pi)
 
 ## Key dependencies
