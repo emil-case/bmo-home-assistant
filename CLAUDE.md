@@ -33,6 +33,17 @@ This allows tool chaining (e.g. search → summarize). Loop until model returns 
 
 **Conversation history is session-scoped.** Keep a `messages[]` list and send it each turn so BMO feels coherent within a session. Wipe on restart.
 
+**Language is a State, resolved by double dispatch.** BMO holds a `LanguageState`
+(`EnglishState` / `SpanishState` in `bmo/language/state.py`). A component that needs a
+language-dependent value asks its owner (BMO), which forwards the call to the current
+state, *passing the component* — so the answer depends on both the component (which
+method it calls) and the concrete state (which subclass answers). Today the only such
+value is the system prompt's reply-language clause ("Always reply in English/Spanish");
+the rest of the prompt is fixed English and lives in `chat.py` (`build_system_prompt`).
+`BMO.switch_language()` flips the state and calls `ChatSession.reset()`, which wipes
+history and reseeds the prompt in the new language. STT language and TTS voice are
+**not** switched yet (see Current state).
+
 ## Development environment
 
 **Develop on Linux, not Windows.** The target is Raspberry Pi OS (Debian-based Linux). Developing on Linux avoids Windows-specific package issues (e.g. `tflite-runtime` has no Windows wheels, `pyaudio` requires workarounds on Windows).
@@ -87,15 +98,17 @@ secrets needed — tests never reach Groq.
 ```
 main.py              # entry point — loads .env, builds BMO, runs it (thin)
 bmo/
-  bmo.py             # BMO: orchestrator; owns the components and the main loop
+  bmo.py             # BMO: orchestrator; owns the components, the main loop, and the LanguageState
   audio/
     capture.py       # owns PyAudio stream; read_chunk(), record_until_silence(), pause()/resume()
     wake_word.py     # wraps openwakeword Model; process(chunk) -> bool
     cue.py           # play_acknowledgement() — beep when wake word fires (placeholder for BMO voice)
+  language/
+    state.py         # LanguageState template + EnglishState/SpanishState; supplies the reply-language clause
   stt/
     transcribe.py    # Transcriber: PCM -> in-memory WAV -> Groq Whisper -> text
   llm/
-    chat.py          # ChatSession: session history + Groq Llama + recursive tool-use loop
+    chat.py          # ChatSession: session history + Groq Llama + recursive tool-use loop; build_system_prompt() + reset()
   tts/
     speak.py         # Speaker: Piper synthesis -> sounddevice playback (voice from resources/voices/)
   tools/
@@ -122,6 +135,9 @@ section below. Include the README update in the push.
 - [x] Web search tool — `bmo/tools/tavily_search.py` (Tavily API), registered as a default LLM tool
 - [x] `BMO` orchestrator (`bmo/bmo.py`) — owns the components and the main loop; `main.py` is thin glue
 - [x] Component ownership — every component takes `owner=` and stores it (`self._owner`); BMO sets itself as owner at init, so components can later delegate shared decisions (e.g. active language) back to BMO
+- [x] Bilingual reply language (EN/ES) — `LanguageState` (`bmo/language/state.py`) supplies the system prompt's reply-language clause via double dispatch; `BMO.switch_language()` flips the state and resets the chat so replies switch language
+- [ ] STT / TTS language switch — Whisper is still forced to English (`bmo/stt/transcribe.py`) and the Speaker loads the first voice it finds; switching the input/output *audio* language is not wired yet
+- [ ] Language switch trigger — `switch_language()` exists but nothing calls it yet (planned: a GPIO button on the Pi)
 
 ## Key dependencies
 

@@ -63,6 +63,13 @@ This is a work in progress. Here's how far it's come:
 - [x] **`BMO` orchestrator** (`bmo/bmo.py`) — owns the components and the main loop;
   each component is initialized with its `owner` so it can delegate shared decisions
   (e.g. active language) back to BMO. `main.py` is now thin glue
+- [x] **Bilingual replies (English / Spanish)** — `LanguageState` (`bmo/language/state.py`)
+  holds the language; the LLM system prompt's "Always reply in …" clause is chosen per
+  language and the rest stays fixed. `BMO.switch_language()` flips it and resets the chat
+- [ ] **Switching the input/output *audio* language** — STT is still locked to English
+  and TTS loads the first voice; only the LLM's reply language switches so far
+- [ ] **A trigger to switch language** — `switch_language()` exists but isn't wired to
+  anything yet (planned: a GPIO button on the Pi)
 
 The main loop lives in the **`BMO` orchestrator** (`bmo/bmo.py`): detect wake word →
 beep → record until silence → transcribe → send to the LLM (which runs the recursive
@@ -103,11 +110,13 @@ python main.py
 ```
 main.py              # entry point — loads .env, builds BMO, runs it (thin glue)
 bmo/
-  bmo.py             # BMO orchestrator — owns the components and the main loop
+  bmo.py             # BMO orchestrator — owns the components, the main loop, and the language state
   audio/
     capture.py       # PyAudio stream; read_chunk(), record_until_silence(), pause()/resume()
     wake_word.py     # wraps openwakeword Model; process(chunk) -> bool
     cue.py           # acknowledgement beep
+  language/
+    state.py         # LanguageState (English/Spanish) — supplies the reply-language clause
   stt/
     transcribe.py    # PCM -> in-memory WAV -> Groq Whisper -> text
   llm/
