@@ -126,6 +126,13 @@ def test_given_transcriber_asks_bmo_when_stt_language_queried_then_routes_to_sta
         assert bmo.stt_language() == "es"
 
 
+def test_given_speaker_asks_bmo_when_tts_voice_queried_then_routes_to_state():
+    with _bmo() as (bmo, _):
+        assert bmo.tts_voice() == "en"
+        bmo.switch_language()
+        assert bmo.tts_voice() == "es"
+
+
 def test_given_switch_language_when_called_then_flips_state_and_resets_chat():
     with _bmo() as (bmo, m):
         bmo.switch_language()

@@ -11,15 +11,32 @@ class LanguageState(ABC):
     concrete state (which language). That pairing is the double dispatch.
 
     The value accessors are **template methods**: the shared instance method
-    (`reply_language` / `stt_language`) lives here once and delegates to an
-    abstract *classmethod* hook (`reply_language_constant` / `stt_language_constant`)
-    that each concrete state fills with its constant. So the per-language data
-    sits on the subclass (no `__init__` carrying it), the lookup logic isn't
-    duplicated per subclass, and ABC still forces every subclass to supply each
-    constant. The values so far are the system-prompt reply-language clause
-    (asked for by the ChatSession) and the Whisper STT language code (asked for
-    by the Transcriber).
+    (`reply_language` / `stt_language` / `tts_voice`) lives here once and
+    delegates to a classmethod hook (`reply_language_constant` / …). The hook is
+    concrete and also lives here once — it just reads a per-language class
+    attribute (`_REPLY_CLAUSE` / `_STT_CODE` / `_TTS_VOICE`) that the concrete
+    state supplies. So the per-language data sits on the subclass as a plain
+    constant (no `__init__` carrying it, no accessor boilerplate repeated per
+    subclass) and the lookup logic isn't duplicated. Because those constants are
+    plain attributes rather than abstract methods, ABC can't enforce them, so
+    `__init_subclass__` does — a concrete state missing one fails at
+    class-definition time instead of with a late `AttributeError`. The values so
+    far are the system-prompt reply-language clause (asked for by the
+    ChatSession), the Whisper STT language code (asked for by the Transcriber),
+    and the TTS voice tag (asked for by the Speaker).
     """
+
+    # Every concrete state must supply these; checked in __init_subclass__ since
+    # they're plain class attributes (no @abstractmethod to enforce them).
+    _REQUIRED_CONSTANTS = ("_REPLY_CLAUSE", "_STT_CODE", "_TTS_VOICE")
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        missing = [name for name in cls._REQUIRED_CONSTANTS if not hasattr(cls, name)]
+        if missing:
+            raise TypeError(
+                f"{cls.__name__} must define {', '.join(missing)}"
+            )
 
     @classmethod
     def default(cls) -> "LanguageState":
@@ -29,14 +46,19 @@ class LanguageState(ABC):
         return EnglishState()
 
     @classmethod
-    @abstractmethod
     def reply_language_constant(cls) -> str:
         """Hook: this language's 'Always reply in X' clause."""
+        return cls._REPLY_CLAUSE
 
     @classmethod
-    @abstractmethod
     def stt_language_constant(cls) -> str:
         """Hook: this language's ISO-639-1 Whisper code."""
+        return cls._STT_CODE
+
+    @classmethod
+    def tts_voice_constant(cls) -> str:
+        """Hook: this language's TTS voice tag (the Piper .onnx filename prefix)."""
+        return cls._TTS_VOICE
 
     def reply_language(self) -> str:
         """The 'Always reply in X' clause spliced into the system prompt."""
@@ -45,6 +67,11 @@ class LanguageState(ABC):
     def stt_language(self) -> str:
         """The ISO-639-1 code Whisper is forced to transcribe in."""
         return self.__class__.stt_language_constant()
+
+    def tts_voice(self) -> str:
+        """The tag the Speaker matches against the installed Piper voices to pick
+        which .onnx to speak this language in."""
+        return self.__class__.tts_voice_constant()
 
     @abstractmethod
     def nextLanguage(self) -> "LanguageState":
@@ -60,14 +87,11 @@ class EnglishState(LanguageState):
     # forced to transcribe in, so it doesn't mishear an accent as another language.
     _REPLY_CLAUSE = "Always reply in English."
     _STT_CODE = "en"
-
-    @classmethod
-    def reply_language_constant(cls):
-        return cls._REPLY_CLAUSE
-
-    @classmethod
-    def stt_language_constant(cls):
-        return cls._STT_CODE
+    # The Piper voice tag: BMO's Speaker globs resources/voices/ for an .onnx
+    # whose filename starts with this (Piper names voices `en_US-amy-medium.onnx`).
+    # It coincides with the STT code today but is conceptually a separate value —
+    # one is a Whisper API parameter, the other selects a TTS model file.
+    _TTS_VOICE = "en"
 
     def nextLanguage(self):
         return SpanishState()
@@ -77,14 +101,7 @@ class SpanishState(LanguageState):
     # Spanish's own data — private to this class (see EnglishState for what these are).
     _REPLY_CLAUSE = "Always reply in Spanish."
     _STT_CODE = "es"
-
-    @classmethod
-    def reply_language_constant(cls):
-        return cls._REPLY_CLAUSE
-
-    @classmethod
-    def stt_language_constant(cls):
-        return cls._STT_CODE
+    _TTS_VOICE = "es"
 
     def nextLanguage(self):
         return EnglishState()

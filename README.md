@@ -71,8 +71,10 @@ This is a work in progress. Here's how far it's come:
 - [x] **Bilingual STT (English / Spanish)** — the `Transcriber` asks BMO for the active
   Whisper language code through the same double dispatch (`stt_language`), resolved on each
   transcription so a switch takes effect on the next utterance
-- [ ] **Switching the output *audio* voice** — TTS still loads the first voice it finds,
-  so BMO's spoken voice doesn't change with the language yet (needs a second voice model)
+- [x] **Bilingual TTS voice (English / Spanish)** — the `Speaker` asks BMO for the active
+  language's voice tag (`tts_voice`) on each reply and plays the matching Piper voice from
+  `resources/voices/`, caching each loaded voice; a switch lands on the next spoken reply.
+  Install a per-language voice to hear it — with only one installed, BMO falls back to it
 - [ ] **A trigger to switch language** — `switch_language()` exists but isn't wired to
   anything yet (planned: a GPIO button on the Pi)
 
@@ -90,12 +92,11 @@ BMO can run in **English or Spanish**. Where a switch lands today:
 |---|---|
 | LLM reply language | ✅ yes — on the chat reset |
 | STT (Whisper) input language | ✅ yes — on the next utterance |
-| TTS output voice | ❌ not yet — still one fixed voice (needs a second voice model) |
+| TTS output voice | ✅ yes — on the next spoken reply (matches a per-language voice in `resources/voices/`; falls back to the default if that language has none installed) |
 | Something that *triggers* the switch | ❌ not yet — `switch_language()` exists but nothing calls it (planned: a GPIO button) |
 
-So the **text** side (understanding you and choosing the reply language) is fully
-bilingual; what's left is BMO's **spoken voice** and a real-world **trigger** to flip
-languages.
+So the whole **pipeline** — understanding you, choosing the reply language, and BMO's
+spoken voice — is bilingual; what's left is a real-world **trigger** to flip languages.
 
 ## Setup
 
@@ -117,7 +118,10 @@ Required env vars in `.env`:
 - `TAVILY_API_KEY` — used for the web search tool
 
 Piper TTS needs a voice model (`.onnx` + `.onnx.json`) placed under
-`resources/voices/` (gitignored). BMO loads the first `.onnx` it finds there.
+`resources/voices/` (gitignored). BMO picks the voice per language by matching the
+active language's tag against the filename prefix (Piper names voices `en_US-…`,
+`es_ES-…`), so installing `en_*` and `es_*` voices gives BMO a distinct voice per
+language; with only one installed it uses that for every language.
 
 Then run:
 
@@ -136,13 +140,13 @@ bmo/
     wake_word.py     # wraps openwakeword Model; process(chunk) -> bool
     cue.py           # acknowledgement beep
   language/
-    state.py         # LanguageState (English/Spanish) — supplies the reply-language clause + STT code
+    state.py         # LanguageState (English/Spanish) — supplies the reply-language clause + STT code + TTS voice tag
   stt/
     transcribe.py    # PCM -> in-memory WAV -> Groq Whisper -> text
   llm/
     chat.py          # session history + Groq Llama + recursive tool-use loop
   tts/
-    speak.py         # Piper synthesis -> sounddevice playback
+    speak.py         # Piper synthesis -> sounddevice playback; voice chosen per language, cached
   tools/
     tavily_search.py # Tavily web search tool exposed to the LLM
 tests/               # pytest suite (mocks hardware + APIs)

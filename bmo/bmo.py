@@ -37,6 +37,11 @@ class BMO:
         to the current state (dispatch by method name, not a passed component)."""
         return self._languageState.stt_language()
 
+    def tts_voice(self):
+        """The Speaker asks for the active language's TTS voice tag; route it to
+        the current state (dispatch by method name, not a passed component)."""
+        return self._languageState.tts_voice()
+
     def switch_language(self):
         """Advance to the next language in the carousel and reseed the chat so
         its system prompt — and thus BMO's reply language — changes. Each state

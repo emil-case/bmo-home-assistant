@@ -30,3 +30,20 @@ def test_given_real_bmo_when_language_switched_then_chat_system_prompt_follows(*
     bmo.switch_language()  # flips the state and resets the chat
     # Reset rebuilds the system message, which re-walks the chain to the new state.
     assert "Spanish" in bmo._chat._messages[0]["content"]
+
+
+# The Speaker's voice selection walks its own chain for real: Speaker would ask
+# BMO.tts_voice() -> LanguageState.tts_voice(). The Speaker itself is mocked here
+# (it loads real .onnx voice files, which aren't installed in CI), but the tag it
+# would receive is produced by the real BMO->state delegation asserted below.
+@patch("bmo.llm.chat.Groq")
+@patch("bmo.bmo.Speaker")
+@patch("bmo.bmo.Transcriber")
+@patch("bmo.bmo.WakeWordDetector")
+@patch("bmo.bmo.AudioCapture")
+def test_given_real_bmo_when_language_switched_then_tts_voice_follows(*_):
+    bmo = BMO()
+    assert bmo.tts_voice() == "en"
+
+    bmo.switch_language()
+    assert bmo.tts_voice() == "es"
