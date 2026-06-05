@@ -65,10 +65,13 @@ decide which language is next — then calls `ChatSession.reset()`, which wipes
 history and reseeds the prompt in the new language. The TTS voice now switches too:
 the `Speaker` asks BMO for the active `tts_voice()` tag (the Piper `.onnx` filename
 prefix, `en`/`es`) once per `say()` — so a switch lands on the next spoken reply —
-and matches it against the installed voices in `resources/voices/`. Because loading
-an `.onnx` is expensive (unlike the reply/STT *strings*, which are resolved every
-call), each language's `PiperVoice` is loaded once and cached. If a language has no
-installed voice, the `Speaker` falls back to the default voice so BMO keeps talking.
+then asks its own `VoiceCatalog` (`tts/voice_catalog.py`), which it builds at
+construction via `VoiceCatalog.default()`, for the matching model file. The catalog
+owns `resources/voices/`, so nothing else touches the filesystem;
+if a language has no installed voice it falls back to the default so BMO keeps
+talking. Because loading an `.onnx` is expensive (unlike the reply/STT *strings*,
+which are resolved every call), the `Speaker` loads each language's `PiperVoice` once
+and caches it.
 
 ### Language switching — status
 
@@ -79,7 +82,7 @@ What a `switch_language()` call changes today, and what it doesn't:
 | LLM reply language (system-prompt clause) | ✅ Done — flips on the chat reset | `llm/chat.py`, `language/state.py` |
 | STT input language (Whisper code) | ✅ Done — flips on the next utterance | `stt/transcribe.py`, `language/state.py` |
 | Carousel + boot state (`nextLanguage()` / `default()`) | ✅ Done — states own succession; BMO depends only on the abstract type | `language/state.py` |
-| TTS output voice | ✅ Done — `Speaker` resolves the active `tts_voice()` tag per `say()`, matches an `.onnx` in `resources/voices/`, and caches each language's voice (needs a per-language voice installed; falls back to the default otherwise) | `tts/speak.py`, `language/state.py` |
+| TTS output voice | ✅ Done — `Speaker` resolves the active `tts_voice()` tag per `say()`, asks its own `VoiceCatalog` (built at construction) for the matching `.onnx` in `resources/voices/`, and caches each language's voice (needs a per-language voice installed; falls back to the default otherwise) | `tts/speak.py`, `tts/voice_catalog.py`, `language/state.py` |
 | **A trigger that calls `switch_language()`** | ❌ Missing — the method exists but nothing invokes it (planned: a GPIO button on the Pi) | — |
 
 Adding a language = add a concrete `LanguageState` (its constants + `nextLanguage()`)
@@ -126,6 +129,10 @@ mocked, so nothing hits a real mic, speaker, or the Groq API:
   tests inject a fake Groq client instead of patching imports.
 - **Hardware wrappers** (`AudioCapture`, `WakeWordDetector`) are tested by patching
   `pyaudio` / the openwakeword `Model`.
+- **Collaborators** (`VoiceCatalog`) are tested directly against a real temp
+  directory — no globals to patch. The `Speaker` builds its own `VoiceCatalog`, so
+  its tests patch `VoiceCatalog.default()` to hand it a *fake* (no filesystem)
+  while patching `PiperVoice`/`sounddevice` at the engine boundary.
 
 The main loop now lives in `BMO` (`bmo/bmo.py`), not `main.py`, and is unit-tested
 (`tests/test_bmo.py`) by patching the component classes in the `bmo.bmo` namespace —
@@ -162,7 +169,8 @@ bmo/
   llm/
     chat.py          # ChatSession: session history + Groq Llama + recursive tool-use loop; build_system_prompt() + reset()
   tts/
-    speak.py         # Speaker: Piper synthesis -> sounddevice playback; picks the voice per language by asking BMO for the active tts_voice tag, caching each loaded voice
+    speak.py         # Speaker: Piper synthesis -> sounddevice playback; per say() asks BMO for the active tts_voice tag, asks its VoiceCatalog for the model, and caches each loaded voice
+    voice_catalog.py # VoiceCatalog: owns resources/voices/; resolves a language tag -> .onnx model file (falls back to the default voice); the Speaker builds one via VoiceCatalog.default()
   tools/
     tavily_search.py # Tavily web search tool exposed to the LLM
 tests/               # pytest suite (mocks hardware + APIs, see Testing)
@@ -189,7 +197,7 @@ section below. Include the README update in the push.
 - [x] Component ownership — every component takes `owner=` and stores it (`self._owner`); BMO sets itself as owner at init, so components can later delegate shared decisions (e.g. active language) back to BMO
 - [x] Bilingual reply language (EN/ES) — `LanguageState` (`bmo/language/state.py`) supplies the system prompt's reply-language clause; `BMO.switch_language()` advances the carousel and resets the chat so replies switch language (see **Language switching — status** above)
 - [x] Bilingual STT (EN/ES) — `Transcriber` asks BMO for the active Whisper language code via the same double dispatch (`stt_language`), resolved per `transcribe()` call so a switch lands on the next utterance (`bmo/stt/transcribe.py`)
-- [x] TTS voice language switch — `Speaker` asks BMO for the active language's `tts_voice` tag per `say()`, matches an `.onnx` in `resources/voices/`, and caches each loaded voice; a switch lands on the next spoken reply (falls back to the default voice if that language has no installed voice — install a second voice model to hear the switch)
+- [x] TTS voice language switch — `Speaker` asks BMO for the active language's `tts_voice` tag per `say()`, asks its own `VoiceCatalog` (built at construction) for the matching `.onnx` in `resources/voices/`, and caches each loaded voice; a switch lands on the next spoken reply (falls back to the default voice if that language has no installed voice — install a second voice model to hear the switch)
 - [ ] Language switch trigger — `switch_language()` exists but nothing calls it yet (planned: a GPIO button on the Pi)
 
 ## Key dependencies

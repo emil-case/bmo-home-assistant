@@ -147,6 +147,7 @@ bmo/
     chat.py          # session history + Groq Llama + recursive tool-use loop
   tts/
     speak.py         # Piper synthesis -> sounddevice playback; voice chosen per language, cached
+    voice_catalog.py # owns resources/voices/; resolves a language tag -> .onnx model (the Speaker builds its own)
   tools/
     tavily_search.py # Tavily web search tool exposed to the LLM
 tests/               # pytest suite (mocks hardware + APIs)
